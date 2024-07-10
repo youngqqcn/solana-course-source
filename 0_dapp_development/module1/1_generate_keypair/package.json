@@ -1,0 +1,25 @@
+{
+    "name": "1_generate_keypair",
+    "version": "1.0.0",
+    "main": "",
+    "license": "MIT",
+    "dependencies": {
+        "@metaplex-foundation/mpl-token-metadata": "2",
+        "@solana-developers/helpers": "^2.3.0",
+        "@solana/spl-token": "^0.4.8",
+        "@solana/web3.js": "^1.95.0",
+        "esrun": "^3.2.26",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.5.3"
+    },
+    "scripts": {
+        "start": "ts-node generate-keypair.ts",
+        "balance": "ts-node check-balance.ts",
+        "transfer": "ts-node transfer.ts 38jEaxphBTa3NEg4K6nG8Zgs6eVsSsr9AoSZCfax2pH8",
+        "create-token-mint": "ts-node create-token-mint.ts",
+        "create-token-metadata": "ts-node create-token-metadata.ts",
+        "create-token-account": "ts-node create-token-account.ts",
+        "mint-tokens": "ts-node mint-tokens.ts",
+        "transfer-token": "ts-node transfer-token.ts"
+    }
+}
