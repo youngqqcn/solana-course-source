@@ -9,6 +9,7 @@
 TODO: 进一步挑战，
 - 为Token增加 Metadata
 - 将metadata上传ipfs
+  - 使用metaplex: https://www.soldev.app/course/nfts-with-metaplex
 
 ----
 
