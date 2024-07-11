@@ -1,3 +1,5 @@
+import WalletContextProvider from "@/components/WalletContexProvider";
+import { ChakraProvider } from "@chakra-ui/react";
 import { ComponentType } from "react";
 
 function MyApp({
@@ -7,7 +9,13 @@ function MyApp({
     Component: ComponentType<any>;
     pageProps: any;
 }) {
-    return <Component {...pageProps} />;
+    return (
+        <ChakraProvider>
+            <WalletContextProvider>
+                <Component {...pageProps} />
+            </WalletContextProvider>
+        </ChakraProvider>
+    );
 }
 
 export default MyApp;

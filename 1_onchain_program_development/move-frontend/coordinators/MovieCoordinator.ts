@@ -7,6 +7,9 @@ export class MovieCoordinator {
     static accounts: web3.PublicKey[] = []
 
     static async prefetchAccounts(connection: web3.Connection, search: string) {
+        if (!connection) {
+            return;
+        }
         const offset = 4 + 6 + 1 + 32 + 1 + 4
         const accounts = await connection.getProgramAccounts(
             new web3.PublicKey(MOVIE_REVIEW_PROGRAM_ID),

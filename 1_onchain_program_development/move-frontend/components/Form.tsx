@@ -48,12 +48,12 @@ export const Form: FC = () => {
         const buffer = movie.serialize(toggle ? 0 : 1)
         const transaction = new web3.Transaction()
 
-        const [pda] = await web3.PublicKey.findProgramAddress(
+        const [pda, ] = await web3.PublicKey.findProgramAddressSync(
             [publicKey.toBuffer(), Buffer.from(movie.title)], // new TextEncoder().encode(movie.title)],
             new web3.PublicKey(MOVIE_REVIEW_PROGRAM_ID)
         )
 
-        const [pdaCounter] = await web3.PublicKey.findProgramAddress(
+        const [pdaCounter, ] = await web3.PublicKey.findProgramAddressSync(
             [pda.toBuffer(), Buffer.from("comment")], // new TextEncoder().encode(movie.title)],
             new web3.PublicKey(MOVIE_REVIEW_PROGRAM_ID)
         )
