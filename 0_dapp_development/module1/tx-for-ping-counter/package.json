@@ -1,0 +1,17 @@
+{
+    "name": "tx-for-ping-counter",
+    "version": "1.0.0",
+    "main": "index.js",
+    "license": "MIT",
+    "dependencies": {
+        "@metaplex-foundation/mpl-token-metadata": "2",
+        "@solana-developers/helpers": "^2.3.0",
+        "@solana/spl-token": "^0.4.8",
+        "@solana/web3.js": "^1.95.0",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.5.3"
+    },
+    "scripts": {
+        "start": "ts-node send-ping-transaction.ts"
+    }
+}
