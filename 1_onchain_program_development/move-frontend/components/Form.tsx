@@ -53,28 +53,31 @@ export const Form: FC = () => {
             new web3.PublicKey(MOVIE_REVIEW_PROGRAM_ID)
         )
 
-        const [pdaCounter, ] = await web3.PublicKey.findProgramAddressSync(
-            [pda.toBuffer(), Buffer.from("comment")], // new TextEncoder().encode(movie.title)],
-            new web3.PublicKey(MOVIE_REVIEW_PROGRAM_ID)
-        )
+        // const [pdaCounter, ] = await web3.PublicKey.findProgramAddressSync(
+        //     [pda.toBuffer(), Buffer.from("comment")], // new TextEncoder().encode(movie.title)],
+        //     new web3.PublicKey(MOVIE_REVIEW_PROGRAM_ID)
+        // )
 
         const instruction = new web3.TransactionInstruction({
             keys: [
                 {
+                    // 对应程序中的 initializer
                     pubkey: publicKey,
                     isSigner: true,
                     isWritable: false,
                 },
+                // TODO: 因为程序中会会创建PDA, 这里是否可以不生成PDA，全部交给程序完成？
                 {
+                    // pda
                     pubkey: pda,
                     isSigner: false,
                     isWritable: true,
                 },
-                {
-                    pubkey: pdaCounter,
-                    isSigner: false,
-                    isWritable: true,
-                },
+                // {
+                //     pubkey: pdaCounter,
+                //     isSigner: false,
+                //     isWritable: true,
+                // },
                 {
                     pubkey: web3.SystemProgram.programId,
                     isSigner: false,

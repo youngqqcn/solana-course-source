@@ -2,6 +2,7 @@
 示例: https://explorer.solana.com/tx/5cMiSiGc39R6gXh3u6meYH2v8yop1LTbr6VV4BBYmWoJDgjQPXCwxxAqPGStFr5WdUw5cD7PULXRAa2HxdHBuj9E?cluster=devnet
 
 
+// 成功交易： https://explorer.solana.com/tx/3LTsVv82mpx5EqGpPvNd5xu6S2ubAtSq1TQD1fRuMV4o5MpqM3w4foyQnFJLSnSuE437VQvr2yPEW2ow5PQQ6ZGH?cluster=devnet
 
 
 
