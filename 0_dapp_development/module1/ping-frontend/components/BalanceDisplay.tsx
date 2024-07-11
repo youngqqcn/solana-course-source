@@ -21,6 +21,7 @@ export const BalanceDisplay: FC = () => {
             "confirmed"
         );
 
+        // 获取用户信息
         connection.getAccountInfo(publicKey).then((info) => {
             if (info) {
                 setBalance(info.lamports);
@@ -32,9 +33,7 @@ export const BalanceDisplay: FC = () => {
 
     return (
         <div>
-            <p>
-                {publicKey ? `Balance: ${balance / LAMPORTS_PER_SOL} SOL` : ""}
-            </p>
+            {publicKey ? `Balance: ${balance / LAMPORTS_PER_SOL} SOL` : ""}
         </div>
     );
 };
