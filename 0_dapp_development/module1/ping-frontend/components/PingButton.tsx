@@ -19,7 +19,7 @@ export const PingButton: FC = () => {
 
     return (
         <div onClick={onClick}>
-            <button>Ping!</button>
+            <button >Ping!</button>
         </div>
     );
 };
