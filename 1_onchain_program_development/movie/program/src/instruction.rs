@@ -7,6 +7,11 @@ pub enum MovieInstruction {
         rating: u8,
         description: String,
     },
+    UpdateMovieReview {
+        title: String,
+        rating: u8,
+        description: String,
+    },
 }
 
 #[derive(BorshDeserialize)]
@@ -25,6 +30,11 @@ impl MovieInstruction {
 
         Ok(match variant {
             0 => Self::AddMovieReview {
+                title: payload.title,
+                rating: payload.rating,
+                description: payload.description,
+            },
+            1 => Self::UpdateMovieReview {
                 title: payload.title,
                 rating: payload.rating,
                 description: payload.description,

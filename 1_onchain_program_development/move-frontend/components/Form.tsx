@@ -1,6 +1,6 @@
-import { FC } from "react"
-import { Movie } from "../models/Movie"
-import { useState } from "react"
+import { FC } from "react";
+import { Movie } from "../models/Movie";
+import { useState } from "react";
 import {
     Box,
     Button,
@@ -14,44 +14,44 @@ import {
     NumberInputStepper,
     Textarea,
     Switch,
-} from "@chakra-ui/react"
-import * as web3 from "@solana/web3.js"
-import { useConnection, useWallet } from "@solana/wallet-adapter-react"
-import { MOVIE_REVIEW_PROGRAM_ID } from "../utils/constants"
+} from "@chakra-ui/react";
+import * as web3 from "@solana/web3.js";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { MOVIE_REVIEW_PROGRAM_ID } from "../utils/constants";
 
 export const Form: FC = () => {
-    const [title, setTitle] = useState("")
-    const [rating, setRating] = useState(0)
-    const [description, setDescription] = useState("")
-    const [toggle, setToggle] = useState(true)
+    const [title, setTitle] = useState("");
+    const [rating, setRating] = useState(0);
+    const [description, setDescription] = useState("");
+    const [updateToggle, setUpdateToggle] = useState(true);
 
-    const { connection } = useConnection()
-    const { publicKey, sendTransaction } = useWallet()
+    const { connection } = useConnection();
+    const { publicKey, sendTransaction } = useWallet();
 
     const handleSubmit = (event: any) => {
-        event.preventDefault()
+        event.preventDefault();
         if (!publicKey) {
-            alert("Please connect your wallet!")
-            return
+            alert("Please connect your wallet!");
+            return;
         }
 
-        const movie = new Movie(title, rating, description, publicKey)
-        handleTransactionSubmit(movie)
-    }
+        const movie = new Movie(title, rating, description, publicKey);
+        handleTransactionSubmit(movie);
+    };
 
     const handleTransactionSubmit = async (movie: Movie) => {
         if (!publicKey) {
-            alert("Please connect your wallet!")
-            return
+            alert("Please connect your wallet!");
+            return;
         }
 
-        const buffer = movie.serialize(toggle ? 0 : 1)
-        const transaction = new web3.Transaction()
+        const buffer = movie.serialize(updateToggle ? 0 : 1);
+        const transaction = new web3.Transaction();
 
         const [pda, ] = await web3.PublicKey.findProgramAddressSync(
             [publicKey.toBuffer(), Buffer.from(movie.title)], // new TextEncoder().encode(movie.title)],
             new web3.PublicKey(MOVIE_REVIEW_PROGRAM_ID)
-        )
+        );
 
         // const [pdaCounter, ] = await web3.PublicKey.findProgramAddressSync(
         //     [pda.toBuffer(), Buffer.from("comment")], // new TextEncoder().encode(movie.title)],
@@ -86,23 +86,23 @@ export const Form: FC = () => {
             ],
             data: buffer,
             programId: new web3.PublicKey(MOVIE_REVIEW_PROGRAM_ID),
-        })
+        });
 
-        transaction.add(instruction)
+        transaction.add(instruction);
 
         try {
-            let txid = await sendTransaction(transaction, connection)
+            let txid = await sendTransaction(transaction, connection);
             alert(
                 `Transaction submitted: https://explorer.solana.com/tx/${txid}?cluster=devnet`
-            )
+            );
             console.log(
                 `Transaction submitted: https://explorer.solana.com/tx/${txid}?cluster=devnet`
-            )
+            );
         } catch (e) {
-            console.log(JSON.stringify(e))
-            alert(JSON.stringify(e))
+            console.log(JSON.stringify(e));
+            alert(JSON.stringify(e));
         }
-    }
+    };
 
     return (
         <Box
@@ -157,7 +157,7 @@ export const Form: FC = () => {
                     <Switch
                         id="update"
                         onChange={(event) =>
-                            setToggle((prevCheck) => !prevCheck)
+                            setUpdateToggle((prevCheck) => !prevCheck)
                         }
                     />
                 </FormControl>
@@ -166,5 +166,5 @@ export const Form: FC = () => {
                 </Button>
             </form>
         </Box>
-    )
-}
+    );
+};
