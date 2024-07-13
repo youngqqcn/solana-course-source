@@ -2,10 +2,10 @@ use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{mint_to, Mint, MintTo, Token, TokenAccount};
 
-declare_id!("GPdZB2R1M4pbGs3Emb14ADRXxRezvNAMqZKsYtk57gPR");
+pub mod constant;
+pub use constant::*;
 
-const ANCHOR_DISCRIMINATOR: usize = 8;
-const STRING_LENGTH_PREFIX: usize = 8;
+declare_id!("GPdZB2R1M4pbGs3Emb14ADRXxRezvNAMqZKsYtk57gPR");
 
 #[program]
 pub mod anchor_movie_review_program {
@@ -42,7 +42,7 @@ pub mod anchor_movie_review_program {
                 },
                 &[&["mint".as_bytes(), &[ctx.bumps.mint]]],
             ),
-            10 * 10 ^ 6,
+            10 * 10_u64.pow(6),
         )?;
 
         msg!("Minted tokens");
@@ -59,6 +59,8 @@ pub mod anchor_movie_review_program {
         msg!("title: {}", title);
         msg!("description: {}", description);
         msg!("rating: {}", rating);
+
+        require!(rating >= 1 && rating <= 5, MovieReviewError::InvalidRating);
 
         let movie_review = &mut ctx.accounts.movie_review;
         movie_review.rating = rating;
@@ -113,7 +115,7 @@ pub struct AddMovieReview<'info> {
     pub system_program: Program<'info, System>,
 
     // added
-    pub token_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
     #[account(
         mut,
         seeds = ["mint".as_bytes()],
@@ -170,9 +172,13 @@ pub struct MovieAccountState {
     pub title: String,
     pub description: String,
 }
+impl Space for MovieAccountState {
+    const INIT_SPACE: usize =
+        ANCHOR_DISCRIMINATOR + PUBKEY_SIZE + U8_SIZE + STRING_LENGTH_PREFIX + STRING_LENGTH_PREFIX;
+}
 
-// #[error_code]
-// enum MovieReviewError {
-//     #[msg("rating must be between 1 and 5")]
-//     InvalidRating
-// }
+#[error_code]
+enum MovieReviewError {
+    #[msg("rating must be between 1 and 5")]
+    InvalidRating,
+}
