@@ -1,4 +1,6 @@
-use anchor_lang::{prelude::*, solana_program::pubkey::PUBKEY_BYTES};
+use anchor_lang::prelude::*;
+use anchor_spl::associated_token::AssociatedToken;
+use anchor_spl::token::{mint_to, Mint, MintTo, Token, TokenAccount};
 
 declare_id!("GPdZB2R1M4pbGs3Emb14ADRXxRezvNAMqZKsYtk57gPR");
 
@@ -7,6 +9,7 @@ const STRING_LENGTH_PREFIX: usize = 8;
 
 #[program]
 pub mod anchor_movie_review_program {
+
     use super::*;
 
     pub fn add_movie_review(
@@ -28,6 +31,21 @@ pub mod anchor_movie_review_program {
         movie_review.description = description;
         movie_review.rating = rating;
 
+        // 调用mint_to
+        mint_to(
+            CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                MintTo {
+                    authority: ctx.accounts.mint.to_account_info(),
+                    to: ctx.accounts.token_account.to_account_info(),
+                    mint: ctx.accounts.mint.to_account_info(),
+                },
+                &[&["mint".as_bytes(), &[ctx.bumps.mint]]],
+            ),
+            10 * 10 ^ 6,
+        )?;
+
+        msg!("Minted tokens");
         Ok(())
     }
 
@@ -53,6 +71,29 @@ pub mod anchor_movie_review_program {
         msg!("movie review of {} account deleted", title);
         Ok(())
     }
+
+    pub fn initialize_token_mint(_ctx: Context<InitializeMint>) -> Result<()> {
+        msg!("Token mint initialized");
+        Ok(())
+    }
+}
+
+#[derive(Accounts)]
+pub struct InitializeMint<'info> {
+    #[account(
+        init,
+        payer=user,
+        seeds=["mint".as_bytes()],
+        bump,
+        mint::decimals=6,
+        mint::authority=mint, // TODO: 这里的权限为什么设置为mint, 而不是 user ?
+    )]
+    pub mint: Account<'info, Mint>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+    pub rent: Sysvar<'info, Rent>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -64,12 +105,30 @@ pub struct AddMovieReview<'info> {
         seeds = [title.as_bytes(), initializer.key.as_ref()],
         bump,
         payer=initializer,
-        space = MovieAccountState::INIT_SPACE + title.len() + description.len()
+        space = 100 + title.len() + description.len()
     )]
     pub movie_review: Account<'info, MovieAccountState>,
     #[account(mut)]
     pub initializer: Signer<'info>,
     pub system_program: Program<'info, System>,
+
+    // added
+    pub token_program: Program<'info, System>,
+    #[account(
+        mut,
+        seeds = ["mint".as_bytes()],
+        bump,
+    )]
+    pub mint: Account<'info, Mint>,
+    #[account(
+        init_if_needed,
+        payer=initializer,
+        associated_token::mint=mint,
+        associated_token::authority = initializer,
+    )]
+    pub token_account: Account<'info, TokenAccount>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 #[derive(Accounts)]
@@ -79,7 +138,7 @@ pub struct UpdateMovieReview<'info> {
         mut,
         seeds = [title.as_bytes(), initializer.key.as_ref()],
         bump,
-        realloc =  MovieAccountState::INIT_SPACE + title.len() + description.len(),
+        realloc =  100 + title.len() + description.len(),
         realloc::payer = initializer,
         realloc::zero = true,
     )]
@@ -112,7 +171,8 @@ pub struct MovieAccountState {
     pub description: String,
 }
 
-impl Space for MovieAccountState {
-    const INIT_SPACE: usize =
-        ANCHOR_DISCRIMINATOR + PUBKEY_BYTES + 1 + STRING_LENGTH_PREFIX + STRING_LENGTH_PREFIX;
-}
+// #[error_code]
+// enum MovieReviewError {
+//     #[msg("rating must be between 1 and 5")]
+//     InvalidRating
+// }
