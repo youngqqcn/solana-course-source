@@ -12,7 +12,6 @@ pub enum MovieInstruction {
         rating: u8,
         description: String,
     },
-
     AddComment {
         comment: String,
     },
@@ -29,7 +28,6 @@ struct MovieReviewPayload {
 struct CommentPayload {
     comment: String,
 }
-
 
 impl MovieInstruction {
     pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
@@ -63,4 +61,3 @@ impl MovieInstruction {
         })
     }
 }
-

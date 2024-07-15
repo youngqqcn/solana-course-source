@@ -833,6 +833,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "movie_solana"
+version = "0.1.0"
+dependencies = [
+ "borsh 0.10.3",
+ "solana-program",
+ "thiserror",
+]
+
+[[package]]
 name = "num-bigint"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -919,15 +928,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "216eaa586a190f0a738f2f918511eecfa90f13295abec0e457cdebcceda80cbd"
 dependencies = [
  "crypto-mac",
-]
-
-[[package]]
-name = "pda-local"
-version = "0.1.0"
-dependencies = [
- "borsh 0.10.3",
- "solana-program",
- "thiserror",
 ]
 
 [[package]]

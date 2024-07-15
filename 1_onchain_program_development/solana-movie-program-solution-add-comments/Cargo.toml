@@ -1,7 +1,11 @@
 [package]
-name = "pda-local"
+name = "movie_solana"
 version = "0.1.0"
+description = "Native Solana Program"
 edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
 
 [features]
 no-entrypoint = []
@@ -10,6 +14,3 @@ no-entrypoint = []
 borsh = "0.10.3"
 solana-program = "1.16.24"
 thiserror = "1.0.48"
-
-[lib]
-crate-type = ["cdylib", "lib"]
