@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use anchor_spl::token::{Mint, Token};
 
 declare_id!("9eyVUWKL7jXk5YH1pY8VyJPfXR5vDd9vksaKcxFpX4xt");
 
@@ -40,6 +41,24 @@ pub mod anchor_student_intro_program {
 }
 
 #[derive(Accounts)]
+pub struct InitialzeMint<'info> {
+    #[account(
+        init,
+        payer=user,
+        seeds=["mint".as_bytes()],
+        bump,
+        mint::decimals=6,
+        mint::authority=mint,
+    )]
+    pub mint: Account<'info, Mint>,
+    #[account(mut)]
+    pub user: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+    pub rent: Sysvar<'info, Rent>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
 #[instruction(name: String, intro: String)]
 pub struct CreateStudentIntro<'info> {
     #[account(
@@ -71,7 +90,6 @@ pub struct UpdateStudentIntro<'info> {
     pub initializer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
-
 
 #[account]
 pub struct StudentIntroState {

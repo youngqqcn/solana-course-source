@@ -98,6 +98,7 @@ pub struct InitializeMint<'info> {
     pub system_program: Program<'info, System>,
 }
 
+
 #[derive(Accounts)]
 // 这里的顺序和指令处理函数的参数顺序一致, 必须按照顺序，后面的参数可以省略，前面的参数不能省略
 #[instruction(title:String, description:String)]
