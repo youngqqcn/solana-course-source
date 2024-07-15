@@ -33,6 +33,7 @@ pub fn process_instruction(
             rating,
             description,
         } => update_movie_review(program_id, accounts, title, rating, description),
+        MovieInstruction::AddComment { comment  } => add_comment(program_id, accounts, comment),
     }
 }
 
@@ -204,5 +205,19 @@ pub fn update_movie_review(
     account_data.serialize(&mut &mut pda_account.data.borrow_mut()[..])?;
     msg!("state account serialized");
 
+    Ok(())
+}
+
+
+
+
+pub fn add_comment(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+    comment: String,
+) -> ProgramResult {
+
+
+    
     Ok(())
 }
