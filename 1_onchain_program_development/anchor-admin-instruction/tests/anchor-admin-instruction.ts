@@ -3,7 +3,7 @@ import { Program } from "@coral-xyz/anchor";
 import * as spl from "@solana/spl-token";
 // import { AnchorAdminInstruction } from "../target/types/anchor_admin_instruction";
 import fs from "fs";
-import { assert } from "chai";
+import { assert, expect } from "chai";
 import { AnchorAdminInstruction } from "../target/types/anchor_admin_instruction";
 import { getKeypairFromFile } from "@solana-developers/helpers";
 
@@ -23,6 +23,11 @@ describe("anchor-admin-instruction", () => {
     let feeDestination: anchor.web3.PublicKey;
     let senderTokenAccount: anchor.web3.PublicKey;
     let receiverTokenAccount: anchor.web3.PublicKey;
+
+    const [programConfig] = anchor.web3.PublicKey.findProgramAddressSync(
+        [Buffer.from("program_config")],
+        program.programId
+    );
 
     before(async () => {
         const wallet = await getKeypairFromFile(
@@ -94,11 +99,45 @@ describe("anchor-admin-instruction", () => {
         );
     });
 
+    it("initialize ProgramConfig", async () => {
+        // const wallet = await getKeypairFromFile(
+        //     "/home/yqq/.config/solana/id.json"
+        // );
+        const tx = await program.methods
+            .initializeProgramConfig()
+            .accounts({
+                feeDestination: feeDestination,
+                authority: provider.wallet.publicKey,
+            })
+            .signers([])
+            .rpc();
+
+        assert.strictEqual(
+            (
+                await program.account.programConfig.fetch(programConfig)
+            ).feeBasisPoints.toNumber(),
+            100
+        );
+        assert.strictEqual(
+            (
+                await program.account.programConfig.fetch(programConfig)
+            ).feeDestination.toBase58(),
+            feeDestination.toBase58()
+        );
+        assert.strictEqual(
+            (
+                await program.account.programConfig.fetch(programConfig)
+            ).admin.toBase58(),
+            provider.wallet.publicKey.toBase58()
+        );
+    });
+
     it("Payment completes successfully", async () => {
         const tx = await program.methods
             .payment(new anchor.BN(10000))
             .accounts({
-                feeDestination: feeDestination,
+                // programConfig: programConfig,
+                // feeDestination: feeDestination,
                 senderTokenAccount: senderTokenAccount,
                 receiverTokenAccount: receiverTokenAccount,
                 sender: sender.publicKey,
@@ -120,5 +159,28 @@ describe("anchor-admin-instruction", () => {
                 .value.uiAmount,
             9900
         );
+    });
+
+    it("update program config", async () => {
+        console.log(
+            "current admin: ",
+            (
+                await program.account.programConfig.fetch(programConfig)
+            ).admin.toBase58()
+        );
+        let tx = await program.methods
+            .updateProgramConfig(new anchor.BN(200))
+            .accounts({
+                admin: provider.publicKey,
+                newAdmin: sender.publicKey,
+                feeDestination: feeDestination,
+            })
+            .rpc();
+
+        expect(
+            (
+                await program.account.programConfig.fetch(programConfig)
+            ).admin.toBase58()
+        ).to.equal(sender.publicKey.toBase58());
     });
 });
