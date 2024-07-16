@@ -6,6 +6,7 @@ import fs from "fs";
 import { assert, expect } from "chai";
 import { AnchorAdminInstruction } from "../target/types/anchor_admin_instruction";
 import { getKeypairFromFile } from "@solana-developers/helpers";
+import { execSync } from "child_process";
 
 describe("anchor-admin-instruction", () => {
     // Configure the client to use the local cluster.
@@ -28,8 +29,14 @@ describe("anchor-admin-instruction", () => {
         [Buffer.from("program_config")],
         program.programId
     );
+    const deploy = () => {
+        const deployCmd = `solana program deploy --url localhost -v --program-id $(pwd)/target/deploy/anchor_admin_instruction-keypair.json $(pwd)/target/deploy/anchor_admin_instruction.so`;
+        return execSync(deployCmd);
+    };
 
     before(async () => {
+
+
         const wallet = await getKeypairFromFile(
             "/home/yqq/.config/solana/id.json"
         );
@@ -97,6 +104,11 @@ describe("anchor-admin-instruction", () => {
             },
             "confirmed"
         );
+
+        // const output = deploy();
+        // console.log(output.toString());
+
+        // console.log("program: ", program.programId.toBase58());
     });
 
     it("initialize ProgramConfig", async () => {
@@ -182,5 +194,23 @@ describe("anchor-admin-instruction", () => {
                 await program.account.programConfig.fetch(programConfig)
             ).admin.toBase58()
         ).to.equal(sender.publicKey.toBase58());
+    });
+
+    it("update program config with unauthorized account, expect fail", async () => {
+        try {
+            let tx = await program.methods
+                .updateProgramConfig(new anchor.BN(200))
+                .accounts({
+                    admin: sender.publicKey, // 此时send已经不是admin了
+                    newAdmin: sender.publicKey,
+                    feeDestination: feeDestination,
+                })
+                .transaction();
+
+            let sig = await provider.sendAndConfirm(tx, [sender]);
+        } catch (err) {
+            console.error(err);
+            expect(err);
+        }
     });
 });

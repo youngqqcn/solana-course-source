@@ -17,8 +17,8 @@ pub const USDC_MINT_PUBKEY: Pubkey = pubkey!("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEG
 
 pub const SEED_PROGRAM_CONFIG: &[u8] = b"program_config";
 
-#[constant]
-pub const ADMIN: Pubkey = pubkey!("7DxeAgFoxk9Ha3sdciWE4G4hsR9CUjPxsHAxTmuCJrop");
+// #[constant]
+// pub const ADMIN: Pubkey = pubkey!("7DxeAgFoxk9Ha3sdciWE4G4hsR9CUjPxsHAxTmuCJrop");
 
 #[program]
 pub mod anchor_admin_instruction {
