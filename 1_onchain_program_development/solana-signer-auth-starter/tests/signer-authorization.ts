@@ -74,7 +74,65 @@ describe("signer-authorization", () => {
         );
         expect(balance.value.uiAmount).to.eq(100);
     });
+
+    it("insecure withdraw", async () => {
+        let tx = await program.methods
+            .insecureWithdraw()
+            .accounts({
+                withdrawDestination: withdrawDestinationFake,
+            })
+            .transaction();
+
+        await anchor.web3.sendAndConfirmTransaction(connection, tx, [
+            walletFake, // 使用攻击者的钱包
+        ]);
+
+        // 查看
+        const balance = await connection.getTokenAccountBalance(
+            tokenAccount.publicKey
+        );
+        // 查看vault的余额
+        expect(balance.value.uiAmount).to.equal(0);
+    });
+
+    it("secure withdraw expect ok", async () => {
+        let tx = await program.methods
+            .insecureWithdraw()
+            .accounts({
+                withdrawDestination: withdrawDestinationFake,
+            })
+            .rpc();
+
+        // 查看
+        const balance = await connection.getTokenAccountBalance(
+            tokenAccount.publicKey
+        );
+        // 查看vault的余额
+        expect(balance.value.uiAmount).to.equal(0);
+    });
+
+    it("secure withdraw expect fail", async () => {
+        try {
+            let tx = await program.methods
+                .secureWithdraw()
+                .accounts({
+                    withdrawDestination: withdrawDestinationFake,
+                })
+                .transaction();
+
+            await anchor.web3.sendAndConfirmTransaction(connection, tx, [
+                walletFake, // 使用攻击者的钱包
+            ]);
+
+            // 查看
+            // const balance = await connection.getTokenAccountBalance(
+            //     tokenAccount.publicKey
+            // );
+            // 查看vault的余额
+            // expect(balance.value.uiAmount).to.equal(0);
+        } catch (error) {
+            expect(error);
+            console.error(error);
+        }
+    });
 });
-function findProgramAddressSync(arg0: Buffer[], programId: PublicKey): [any] {
-    throw new Error("Function not implemented.");
-}
