@@ -29,17 +29,25 @@ describe("anchor-admin-instruction", () => {
         [Buffer.from("program_config")],
         program.programId
     );
+
+    const [programData] = anchor.web3.PublicKey.findProgramAddressSync(
+        [program.programId.toBytes()],
+        new anchor.web3.PublicKey("BPFLoaderUpgradeab1e11111111111111111111111")
+    );
     const deploy = () => {
-        const deployCmd = `solana program deploy --url localhost -v --program-id $(pwd)/target/deploy/anchor_admin_instruction-keypair.json $(pwd)/target/deploy/anchor_admin_instruction.so`;
+        const deployCmd = `solana program deploy --url localhost -v --program-id /home/yqq/fansland/solana/solana-course-source/1_onchain_program_development/anchor-admin-instruction/target/deploy/anchor_admin_instruction-keypair.json /home/yqq/fansland/solana/solana-course-source/1_onchain_program_development/anchor-admin-instruction/target/deploy/anchor_admin_instruction.so`;
         return execSync(deployCmd);
     };
 
     before(async () => {
-
-
         const wallet = await getKeypairFromFile(
             "/home/yqq/.config/solana/id.json"
         );
+
+        const programKeyPair = await getKeypairFromFile(
+            "target/deploy/anchor_admin_instruction-keypair.json"
+        );
+        console.log("programKeyPair", programKeyPair.publicKey.toBase58());
 
         let data = fs.readFileSync(
             "env9JiVQgUQMLt7Qekm8VEwyp2Wzds7ht7UpcmmiR1V.json"
@@ -105,10 +113,9 @@ describe("anchor-admin-instruction", () => {
             "confirmed"
         );
 
-        // const output = deploy();
-        // console.log(output.toString());
-
-        // console.log("program: ", program.programId.toBase58());
+        const output = deploy();
+        console.log(output.toString());
+        console.log("program: ", program.programId.toBase58());
     });
 
     it("initialize ProgramConfig", async () => {
@@ -120,6 +127,8 @@ describe("anchor-admin-instruction", () => {
             .accounts({
                 feeDestination: feeDestination,
                 authority: provider.wallet.publicKey,
+                programData: programData,
+                // program:
             })
             .signers([])
             .rpc();

@@ -10,6 +10,8 @@ pub struct UpdateProgramConfig<'info> {
     #[account(token::mint=USDC_MINT_PUBKEY)]
     pub fee_destination: Account<'info, TokenAccount>,
     #[account(mut, address=program_config.admin)]
+
+    
     pub admin: Signer<'info>,
     /// CHECK: xx
     pub new_admin: UncheckedAccount<'info>,
