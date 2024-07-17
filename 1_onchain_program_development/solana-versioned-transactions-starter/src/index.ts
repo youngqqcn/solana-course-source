@@ -9,11 +9,6 @@ async function main() {
         await connection.getMinimumBalanceForRentExemption(0);
     console.log("rentExemptionAmount: ", rentExemptionAmount);
 
-    // console.log("等待开始");
-    // await waitForNewBlock(connection, 100);
-    // console.log("等待结束");
-    // return;
-
     // Initialize the user's keypair
     const user = await initializeKeypair(connection);
     console.log("PublicKey:", user.publicKey.toBase58());
@@ -42,6 +37,7 @@ async function main() {
     if (!lookupTableAccount) {
         throw new Error("lookup table not found: " + lookupTableAddress);
     }
+    // 关闭
 
     // Create an array of transfer instructions
     const transferInstructions = [];
@@ -64,11 +60,27 @@ async function main() {
         [lookupTableAccount]
     );
 
+    // deactivate
+    console.log("开始 deactivated lookupTableAccount: " + lookupTableAccount);
+    await deactivateLookupTableAccount(
+        connection,
+        lookupTableAccount.key,
+        user
+    );
+    // deactivate 之后需要等待 512个区块
+    console.log("等待 512个区块: ");
+    await waitForNewBlock(connection, 520);
+
+    // close lookup table
+    console.log("开始 close lookupTableAccount: " + lookupTableAccount);
+    await closeLookupTableAccount(connection, lookupTableAccount.key, user);
+
     // 成功示例:
     //  创建 LookupTable Account: https://explorer.solana.com/tx/4FEn1TXuK7NYY1yymFtJHRhmGB9qDJj8PQDk1bwLXDq1wTkJ2BW7MhZKA8CC49PQu71UwYJZwQ8qDmMsNgxDLZhb?cluster=devnet
     // 使用 LookupTable Account交易: https://explorer.solana.com/tx/FAqwza1hAm23x75fTuXsMya6Z5QzVyMffMkiFPbtacrnPZnQ5i6jML3JVB6Te3wNmK2qSSfXA4sBjgPX9pM4Jof?cluster=devnet
     //
     // 57 个地址: https://explorer.solana.com/tx/4371K2NAkRYpEuHpEzwHxnLnDrvA15hAHvmoANxBAdgxxdYEA6wJeZFKQHSpcG36xBpaBuf78K8wXZ7LgxzN9E8u?cluster=devnet
+    // 关闭lookupTable: https://explorer.solana.com/tx/662GpBaYqEd6uANQz7FqB78AAKLY33d6JVHsHCarUuPt5541VsYefVLGKcjqFNs3vq7mZaPqT1ZSuuLfEndYyASg?cluster=devnet
 }
 
 async function sendV0Transaction(
@@ -159,7 +171,6 @@ async function initializeLookupTable(
         extendInstruction,
     ]);
 
-
     var remaining = addresses.slice(30);
     while (remaining.length > 0) {
         const toAdd = remaining.slice(0, 30);
@@ -176,6 +187,33 @@ async function initializeLookupTable(
     }
 
     return lookupTableAddress;
+}
+
+async function deactivateLookupTableAccount(
+    connection: web3.Connection,
+    lookupTableAddress: web3.PublicKey,
+    user: web3.Keypair
+) {
+    const txix = await web3.AddressLookupTableProgram.deactivateLookupTable({
+        lookupTable: lookupTableAddress,
+        authority: user.publicKey,
+    });
+
+    const txid = await sendV0Transaction(connection, user, [txix]);
+}
+
+async function closeLookupTableAccount(
+    connection: web3.Connection,
+    lookupTableAddress: web3.PublicKey,
+    user: web3.Keypair
+) {
+    const txix = await web3.AddressLookupTableProgram.closeLookupTable({
+        lookupTable: lookupTableAddress,
+        authority: user.publicKey,
+        recipient: user.publicKey,
+    });
+
+    const txid = await sendV0Transaction(connection, user, [txix]);
 }
 
 main()
