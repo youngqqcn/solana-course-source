@@ -126,4 +126,59 @@ describe("solana-owner-checks-starter", () => {
         );
         expect(hack_balance.value.uiAmount).to.eq(100);
     });
+
+    it("secure withdraw expect ok", async () => {
+        await spl.mintTo(
+            connection,
+            wallet.payer,
+            mint,
+            tokenPDA,
+            wallet.payer,
+            100
+        );
+        await program.methods
+            .secureWithdraw()
+            .accounts({
+                vault: vault.publicKey,
+                withdrawDestination: withdrawDestination,
+                // authority: wallet.publicKey,
+            })
+            .rpc();
+
+        const balance = await connection.getTokenAccountBalance(tokenPDA);
+        expect(balance.value.uiAmount).to.eq(0);
+    });
+
+    it("secure withdraw expect fail", async () => {
+        await spl.mintTo(
+            connection,
+            wallet.payer,
+            mint,
+            tokenPDA,
+            wallet.payer,
+            100
+        );
+
+        try {
+            let tx = await program.methods
+                .secureWithdraw()
+                .accounts({
+                    vault: vaultClone.publicKey,
+                    withdrawDestination: withdrawDestinationFake,
+                    authority: walletFake.publicKey,
+                })
+                .transaction();
+
+            let txid = await web3.sendAndConfirmTransaction(connection, tx, [
+                walletFake,
+            ]);
+        } catch (error: any) {
+            expect(error.message)
+                .to.toString()
+                .includes(
+                    "The given account is owned by a different program than expected"
+                );
+            console.error(error.message);
+        }
+    });
 });
