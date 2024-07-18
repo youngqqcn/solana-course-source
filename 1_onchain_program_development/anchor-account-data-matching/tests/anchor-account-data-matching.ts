@@ -67,8 +67,8 @@ describe("anchor-account-data-matching", () => {
         await program.methods
             .initializeVault()
             .accounts({
-                vault: vaultPDA,
-                tokenAccount: tokenPDA,
+                // vault: vaultPDA,
+                // tokenAccount: tokenPDA,
                 withdrawDestination: withdrawDestination,
                 mint: mint,
                 authority: wallet.publicKey,
@@ -86,5 +86,81 @@ describe("anchor-account-data-matching", () => {
 
         const balance = await connection.getTokenAccountBalance(tokenPDA);
         expect(balance.value.uiAmount).to.eq(100);
+    });
+
+    it("inscure withdraw", async () => {
+        let tx = await program.methods
+            .insecureWithdraw()
+            .accounts({
+                withdrawDestination: withdrawDestinationFake,
+                authority: walletFake.publicKey,
+            })
+            .transaction();
+
+        await web3.sendAndConfirmTransaction(connection, tx, [walletFake]);
+
+        const balance = await connection.getTokenAccountBalance(tokenPDA);
+        expect(balance.value.uiAmount).to.eq(0);
+    });
+
+    it("secure withdraw expect ok", async () => {
+        await spl.mintTo(
+            connection,
+            wallet.payer,
+            mint,
+            tokenPDA,
+            wallet.payer,
+            100,
+            [],
+            {
+                maxRetries: 1000,
+                commitment: "confirmed",
+            }
+        );
+
+        let txid = await program.methods
+            .secureWithdraw()
+            .accounts({
+                vault: vaultPDA,
+                withdrawDestination: withdrawDestination,
+                authority: wallet.publicKey,
+                tokenAccount: tokenPDA,
+            })
+            .rpc();
+
+        const balance = await connection.getTokenAccountBalance(tokenPDA);
+        expect(balance.value.uiAmount).to.eq(0);
+    });
+
+    it("secure withdraw expect fail", async () => {
+        await spl.mintTo(
+            connection,
+            wallet.payer,
+            mint,
+            tokenPDA,
+            wallet.payer,
+            100,
+            [],
+            {
+                maxRetries: 1000,
+                commitment: "confirmed",
+            }
+        );
+
+        try {
+            let tx = await program.methods
+                .secureWithdraw()
+                .accounts({
+                    vault: vaultPDA,
+                    withdrawDestination: withdrawDestinationFake,
+                    authority: walletFake.publicKey,
+                    tokenAccount: tokenPDA,
+                }).transaction();
+
+            await web3.sendAndConfirmTransaction(connection, tx, [walletFake]);
+        } catch (error) {
+            expect(error);
+            console.error(error);
+        }
     });
 });
