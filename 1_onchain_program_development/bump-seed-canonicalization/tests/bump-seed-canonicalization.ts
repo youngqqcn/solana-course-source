@@ -2,7 +2,11 @@ import * as anchor from "@coral-xyz/anchor";
 import { Program, web3 } from "@coral-xyz/anchor";
 import { BumpSeedCanonicalization } from "../target/types/bump_seed_canonicalization";
 import { safeAirdrop } from "./utils/utils";
-import { createMint, getAccount, getAssociatedTokenAddress } from "@solana/spl-token";
+import {
+    createMint,
+    getAccount,
+    getAssociatedTokenAddress,
+} from "@solana/spl-token";
 import { expect } from "chai";
 
 describe("bump-seed-canonicalization", () => {
@@ -39,7 +43,6 @@ describe("bump-seed-canonicalization", () => {
         const attacker = web3.Keypair.generate();
         await safeAirdrop(attacker.publicKey, provider.connection);
 
-
         const ataKey = await getAssociatedTokenAddress(
             mint,
             attacker.publicKey
@@ -68,7 +71,7 @@ describe("bump-seed-canonicalization", () => {
                         user: pda,
                         mint,
                         payer: attacker.publicKey,
-                        userAta: ataKey,
+                        // userAta: ataKey,
                     })
                     .signers([attacker])
                     .rpc();
@@ -78,7 +81,7 @@ describe("bump-seed-canonicalization", () => {
 
                 // 不搞太多次, 不然测试时间很长
                 if (numClaims > 4) {
-                    break
+                    break;
                 }
             } catch (error) {
                 if (
@@ -100,5 +103,93 @@ describe("bump-seed-canonicalization", () => {
 
         expect(numClaims).to.be.greaterThan(1);
         expect(Number(ata.amount)).to.be.greaterThan(10);
+    });
+
+    it("secure create & claim", async () => {
+        let tx = await program.methods.createUserSecure().accounts({}).rpc();
+
+        let tx2 = await program.methods
+            .claimSecure()
+            .accounts({
+                mint: mint,
+            })
+            .rpc();
+
+        const ataKey = await getAssociatedTokenAddress(
+            mint,
+            provider.wallet.publicKey
+        );
+
+        let ata = await getAccount(connection, ataKey);
+        expect(Number(ata.amount)).to.equal(10);
+    });
+
+    it("mutil create & claim expect fail", async () => {
+        const attacker = web3.Keypair.generate();
+        await safeAirdrop(attacker.publicKey, connection);
+        const tx = await program.methods
+            .createUserSecure()
+            .accounts({
+                payer: attacker.publicKey,
+            })
+            .transaction();
+
+        let sig = await web3.sendAndConfirmTransaction(connection, tx, [
+            attacker,
+        ]);
+
+        try {
+            const tx2 = await program.methods
+                .createUserSecure()
+                .accounts({
+                    payer: attacker.publicKey,
+                })
+                .transaction();
+
+            let sig2 = await web3.sendAndConfirmTransaction(connection, tx2, [
+                attacker,
+            ]);
+        } catch (error) {
+            console.error(error);
+            expect(error.message).include("already in use");
+        }
+
+        console.log("xxxxxxxxx===========");
+
+        let tx3 = await program.methods
+            .claimSecure()
+            .accounts({
+                payer: attacker.publicKey,
+                mint: mint,
+            })
+            .transaction();
+        let sig3 = await web3.sendAndConfirmTransaction(connection, tx3, [
+            attacker,
+        ]);
+
+        try {
+            let tx4 = await program.methods
+                .claimSecure()
+                .accounts({
+                    payer: attacker.publicKey,
+                    mint: mint,
+                })
+                .transaction();
+            let sig4 = await web3.sendAndConfirmTransaction(connection, tx4, [
+                attacker,
+            ]);
+            console.log("sig4:", sig4.toString());
+        } catch (error) {
+            console.error(error);
+            expect(error);
+        }
+
+        const ataKey = await getAssociatedTokenAddress(
+            mint,
+            attacker.publicKey
+        );
+
+        let ata = await getAccount(connection, ataKey);
+        expect(Number(ata.amount)).to.equal(10);
     });
 });
