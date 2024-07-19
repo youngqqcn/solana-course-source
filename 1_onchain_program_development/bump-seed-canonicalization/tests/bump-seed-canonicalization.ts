@@ -150,7 +150,7 @@ describe("bump-seed-canonicalization", () => {
                 attacker,
             ]);
         } catch (error) {
-            console.error(error);
+            // console.error(error);
             expect(error.message).include("already in use");
         }
 
@@ -180,8 +180,8 @@ describe("bump-seed-canonicalization", () => {
             ]);
             console.log("sig4:", sig4.toString());
         } catch (error) {
-            console.error(error);
-            expect(error);
+            // console.error(error);
+            expect(error.message).include("already claimed");
         }
 
         const ataKey = await getAssociatedTokenAddress(

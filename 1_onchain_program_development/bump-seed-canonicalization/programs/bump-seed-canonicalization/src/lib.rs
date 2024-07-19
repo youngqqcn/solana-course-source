@@ -109,8 +109,9 @@ pub mod bump_seed_canonicalization {
             10,
         )?;
 
-        let user = &mut ctx.accounts.user;
-        user.rewards_claimed = true;
+        // let user = &mut ctx.accounts.user;
+        // user.rewards_claimed = true;
+        ctx.accounts.user.rewards_claimed = true;
 
         Ok(())
     }
@@ -169,12 +170,13 @@ pub struct CreateUserSecure<'info> {
 #[derive(Accounts)]
 pub struct SecureClaim<'info> {
     #[account(
+        mut,
         seeds=[payer.key().as_ref()],
         bump,
         constraint = user.rewards_claimed == false @ClaimError::AlreadyClaimed,
         constraint = user.auth == payer.key(),
     )]
-    pub user: Account<'info, UserSecure>,
+    user: Account<'info, UserSecure>,
     #[account(mut)]
     pub payer: Signer<'info>,
 
