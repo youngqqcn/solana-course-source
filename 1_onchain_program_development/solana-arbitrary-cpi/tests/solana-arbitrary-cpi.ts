@@ -43,40 +43,86 @@ describe("solana-arbitrary-cpi", async () => {
         expect(tx);
 
         // Initialize attacker with fake metadata program
+        await gameplayProgram.methods
+            .createCharacterInsecure()
+            .accounts({
+                metadataProgram: fakeMetadataProgram.programId,
+                authority: attacker.publicKey,
+            })
+            .signers([attacker])
+            .rpc();
+
+        const [playerOneMetadataKey] = getMetadataKey(
+            playerOne.publicKey,
+            gameplayProgram.programId,
+            metadataProgram.programId
+        );
+
+        const [attackerMetadataKey] = getMetadataKey(
+            attacker.publicKey,
+            gameplayProgram.programId,
+            fakeMetadataProgram.programId
+        );
+
+        const playerOneMetadata = await metadataProgram.account.metadata.fetch(
+            playerOneMetadataKey
+        );
+
+        const attackerMetadata =
+            await fakeMetadataProgram.account.metadata.fetch(
+                attackerMetadataKey
+            );
+
+        expect(playerOneMetadata.health).to.be.lessThan(20);
+        expect(playerOneMetadata.power).to.be.lessThan(20);
+
+        expect(attackerMetadata.health).to.equal(255);
+        expect(attackerMetadata.power).to.equal(255);
+
         // await gameplayProgram.methods
-        //     .createCharacterInsecure()
+        //     .battleInsecure()
         //     .accounts({
-        //         metadataProgram: fakeMetadataProgram.programId,
-        //         authority: attacker.publicKey,
+        //         playerOne: playerOne.publicKey,
+        //         playerTwo: attacker.publicKey,
+        //         playerOneMetadata: playerOneMetadataKey,
+        //         playerTwoMetadata: attackerMetadataKey,
+        //         metadataProgram: metadataProgram.programId,
         //     })
-        //     .signers([attacker])
         //     .rpc();
 
-        // const [playerOneMetadataKey] = getMetadataKey(
-        //     playerOne.publicKey,
-        //     gameplayProgram.programId,
-        //     metadataProgram.programId
+        // const [characterAttackerKey, _] = web3.PublicKey.findProgramAddressSync(
+        //     [attacker.publicKey.toBuffer()],
+        //     gameplayProgram.programId
         // );
-
-        // const [attackerMetadataKey] = getMetadataKey(
-        //     attacker.publicKey,
-        //     gameplayProgram.programId,
-        //     fakeMetadataProgram.programId
+        // const characterAttacker = await gameplayProgram.account.character.fetch(
+        //     characterAttackerKey
         // );
+        // expect(characterAttacker.wins.toNumber()).to.equal(1);
 
-        // const playerOneMetadata = await metadataProgram.account.metadata.fetch(
-        //     playerOneMetadataKey
+        // const [characterPlayerOneKey] = web3.PublicKey.findProgramAddressSync(
+        //     [attacker.publicKey.toBuffer()],
+        //     gameplayProgram.programId
         // );
-
-        // const attackerMetadata =
-        //     await fakeMetadataProgram.account.metadata.fetch(
-        //         attackerMetadataKey
+        // const characterPlayerOne =
+        //     await gameplayProgram.account.character.fetch(
+        //         characterPlayerOneKey
         //     );
-
-        // expect(playerOneMetadata.health).to.be.lessThan(20);
-        // expect(playerOneMetadata.power).to.be.lessThan(20);
-
-        // expect(attackerMetadata.health).to.equal(255);
-        // expect(attackerMetadata.power).to.equal(255);
+        // expect(characterPlayerOne.wins.toNumber()).to.equal(0);
     });
+
+    it("Secure character creation doesn't allow fake program", async () => {
+        try {
+          await gameplayProgram.methods
+            .createCharacterSecure()
+            .accounts({
+              metadataProgram: fakeMetadataProgram.programId,
+              authority: attacker.publicKey,
+            })
+            .signers([attacker])
+            .rpc()
+        } catch (error) {
+          expect(error)
+          console.log(error)
+        }
+    })
 });

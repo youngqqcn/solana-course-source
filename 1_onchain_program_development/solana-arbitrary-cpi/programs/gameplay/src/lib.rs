@@ -1,12 +1,17 @@
 use anchor_lang::prelude::*;
-use character_metadata::cpi::accounts::CreateMetadata;
+use character_metadata::{cpi::accounts::CreateMetadata, program::CharacterMetadata};
+use character_metadata::cpi::create_metadata;
 
 declare_id!("AAXCmmeJm4zYibqxdanBjUkhgsBeAMnQ5jpNstQyrCAZ");
 
 #[program]
 pub mod gameplay {
-    use super::*;
+
     use anchor_lang::solana_program::{instruction::Instruction, program::invoke};
+
+    use super::*;
+    // use anchor_lang::solana_program::{instruction::Instruction, program::invoke};
+    // use character_metadata::character_metadata::create_metadata;
 
     pub fn create_character_insecure(ctx: Context<CreateCharacterInsecure>) -> Result<()> {
         let character = &mut ctx.accounts.character;
@@ -39,6 +44,26 @@ pub mod gameplay {
             &create_metadata_instruction,
             &context.accounts.to_account_infos(),
         )?;
+
+        Ok(())
+    }
+    pub fn create_character_secure(ctx: Context<CreateCharacterSecure>) -> Result<()> {
+        let character = &mut ctx.accounts.character;
+        character.metadata = ctx.accounts.metadata_account.key();
+        character.auth = ctx.accounts.authority.key();
+        character.wins = 0;
+
+        let context = CpiContext::new(
+            ctx.accounts.metadata_program.to_account_info(),
+            CreateMetadata {
+                character: ctx.accounts.character.to_account_info(),
+                metadata: ctx.accounts.metadata_account.to_owned(),
+                authority: ctx.accounts.authority.to_account_info(),
+                system_program: ctx.accounts.system_program.to_account_info(),
+            },
+        );
+
+        create_metadata(context)?;
 
         Ok(())
     }
@@ -85,6 +110,31 @@ pub struct CreateCharacterInsecure<'info> {
     pub metadata_account: AccountInfo<'info>,
     ///CHECK: intentionally don't check the metadata program
     pub metadata_program: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+
+#[derive(Accounts)]
+pub struct CreateCharacterSecure<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + 32 + 32 + 64,
+        seeds = [authority.key().as_ref()],
+        bump
+    )]
+    pub character: Account<'info, Character>,
+    #[account(
+        mut,
+        seeds = [character.key().as_ref()],
+        seeds::program = metadata_program.key(),
+        bump,
+    )]
+    /// CHECK: manual checks
+    pub metadata_account: AccountInfo<'info>,
+    pub metadata_program: Program<'info, CharacterMetadata>,
     pub system_program: Program<'info, System>,
 }
 
