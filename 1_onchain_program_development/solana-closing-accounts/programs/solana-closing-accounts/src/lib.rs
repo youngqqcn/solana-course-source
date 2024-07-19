@@ -26,12 +26,12 @@ pub mod solana_closing_accounts {
 
     pub fn redeem_winnings_insecure(ctx: Context<RedeemWinnings>) -> Result<()> {
         msg!("Calculating winnings");
-        let amount = ctx.accounts.lottery_entry.timestamp as u64 * 10;
+        let amount = 10; //ctx.accounts.lottery_entry.timestamp as u64 * 10;
 
         msg!("Minting {} tokens in rewards", amount);
         // program signer seeds
         let auth_bump = ctx.bumps.mint_auth;
-        let auth_seeds = &[MINT_SEED.as_bytes(), &[auth_bump]];
+        let auth_seeds = &[&MINT_SEED[..], &[auth_bump]];
         let signer = &[&auth_seeds[..]];
 
         // donate RND by minting to vault
@@ -54,6 +54,20 @@ pub mod solana_closing_accounts {
         msg!("Lottery lamports: {:?}", account_to_close.lamports);
         msg!("Lottery account closed");
 
+        Ok(())
+    }
+
+    pub fn redeem_winnings_secure(ctx: Context<RedeemWinningsSecure>) -> Result<()> {
+        let amount = 10; //ctx.accounts.lottery_entry.timestamp as u64 * 10;
+
+        msg!("Minting {} tokens in rewards", amount);
+        // program signer seeds
+        let auth_bump = ctx.bumps.mint_auth;
+        let auth_seeds = &[&MINT_SEED[..], &[auth_bump]];
+        let signer = &[&auth_seeds[..]];
+
+        // donate RND by minting to vault
+        mint_to(ctx.accounts.mint_ctx().with_signer(signer), amount)?;
         Ok(())
     }
 
@@ -121,10 +135,32 @@ pub struct RedeemWinnings<'info> {
     pub reward_mint: Account<'info, Mint>,
     ///CHECK: mint authority
     #[account(
-        seeds = [MINT_SEED.as_bytes()],
+        seeds = [MINT_SEED],
         bump
     )]
     pub mint_auth: AccountInfo<'info>,
+    pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct RedeemWinningsSecure<'info> {
+    #[account(mut, seeds=[user.key().as_ref()], bump, close=user, has_one = user)]
+    pub lottery_entry: Account<'info, LotteryAccount>,
+
+    #[account(mut)]
+    pub user: Signer<'info>,
+
+    // #[account(init_if_needed)] // 整理在客户端创建了， 因此这里不做初始化
+    #[account(mut, constraint = user_ata.key() == lottery_entry.user_ata)]
+    pub user_ata: Account<'info, TokenAccount>,
+
+    #[account(mut, constraint = reward_mint.key() == user_ata.mint)]
+    pub reward_mint: Account<'info, Mint>,
+
+    /// CHECK:
+    #[account(seeds=[MINT_SEED.as_ref()], bump)]
+    pub mint_auth: AccountInfo<'info>,
+
     pub token_program: Program<'info, Token>,
 }
 
@@ -147,9 +183,22 @@ pub struct LotteryAccount {
     user_ata: Pubkey,
 }
 
-pub const MINT_SEED: &str = "mint-seed";
+pub const MINT_SEED: &[u8; 9] = b"mint-seed";
 
 impl<'info> RedeemWinnings<'info> {
+    pub fn mint_ctx(&self) -> CpiContext<'_, '_, '_, 'info, MintTo<'info>> {
+        let cpi_program = self.token_program.to_account_info();
+        let cpi_accounts = MintTo {
+            mint: self.reward_mint.to_account_info(),
+            to: self.user_ata.to_account_info(),
+            authority: self.mint_auth.to_account_info(),
+        };
+
+        CpiContext::new(cpi_program, cpi_accounts)
+    }
+}
+
+impl<'info> RedeemWinningsSecure<'info> {
     pub fn mint_ctx(&self) -> CpiContext<'_, '_, '_, 'info, MintTo<'info>> {
         let cpi_program = self.token_program.to_account_info();
         let cpi_accounts = MintTo {

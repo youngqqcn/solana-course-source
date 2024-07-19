@@ -125,8 +125,94 @@ describe("solana-closing-accounts", () => {
             attackerLotteryEntry
         );
 
-        expect(Number(ata.amount)).to.equal(
-            lotteryEntry.timestamp.toNumber() * 10 * 2
-        );
+        // expect(Number(ata.amount)).to.equal(
+        //     lotteryEntry.timestamp.toNumber() * 10 * 2
+        // );
+        expect(Number(ata.amount)).to.equal(10 * 2);
+    });
+
+    it("Enter lottery & Claim Secure & Refund", async () => {
+        // tx to enter lottery
+
+        const attacker2 = web3.Keypair.generate();
+        await safeAirdrop(attacker2.publicKey, provider.connection);
+
+        const [attackerLotteryEntry2] =
+            await web3.PublicKey.findProgramAddressSync(
+                [attacker2.publicKey.toBuffer()],
+                program.programId
+            );
+
+        const attackerAta2 = (
+            await getOrCreateAssociatedTokenAccount(
+                provider.connection,
+                attacker2,
+                rewardMint,
+                attacker2.publicKey
+            )
+        ).address;
+
+        await program.methods
+            .enterLottery()
+            .accounts({
+                lotteryEntry: attackerLotteryEntry2,
+                user: attacker2.publicKey,
+                userAta: attackerAta2,
+                systemProgram: SystemProgram.programId,
+            })
+            .signers([attacker2])
+            .rpc();
+
+        try {
+            for (let i = 0; i < 2; i++) {
+                const tx = new Transaction();
+                // instruction claims rewards, program will try to close account
+                tx.add(
+                    await program.methods
+                        .redeemWinningsSecure()
+                        .accounts({
+                            lotteryEntry: attackerLotteryEntry2,
+                            user: attacker2.publicKey,
+                            userAta: attackerAta2,
+                            rewardMint: rewardMint,
+                            mintAuth: mintAuth,
+                            tokenProgram: TOKEN_PROGRAM_ID,
+                        })
+                        .instruction()
+                );
+
+                // user adds instruction to refund dataAccount lamports
+                const rentExemptLamports =
+                    await provider.connection.getMinimumBalanceForRentExemption(
+                        82,
+                        "confirmed"
+                    );
+
+                // =================== 牛逼: 重新打一笔租金, 不让系统回收账户,
+                // =================== 因为Solana的垃圾回收是整个交易结束之后才进行，而一笔交易包含多个指令
+                tx.add(
+                    SystemProgram.transfer({
+                        fromPubkey: attacker2.publicKey,
+                        toPubkey: attackerLotteryEntry2,
+                        lamports: rentExemptLamports,
+                    })
+                );
+                // send tx
+                const sig = await sendAndConfirmTransaction(
+                    provider.connection,
+                    tx,
+                    [attacker2]
+                );
+                console.log("sig==> ", sig.toString());
+                await new Promise((x) => setTimeout(x, 5000));
+            }
+        } catch (error) {
+            console.error(error);
+            expect(error).to.include("The given account is owned by a different program than expected");
+        }
+
+        let ata = await getAccount(provider.connection, attackerAta2);
+
+        expect(Number(ata.amount)).to.equal(10);
     });
 });
