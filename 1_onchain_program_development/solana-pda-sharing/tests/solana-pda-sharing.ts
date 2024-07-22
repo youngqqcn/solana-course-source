@@ -5,6 +5,7 @@ import { SolanaPdaSharing } from "../target/types/solana_pda_sharing";
 import { Keypair } from "@solana/web3.js";
 import * as spl from "@solana/spl-token";
 import { expect } from "chai";
+import { getAccount } from "@solana/spl-token";
 
 describe("solana-pda-sharing", () => {
     // Configure the client to use the local cluster.
@@ -46,7 +47,7 @@ describe("solana-pda-sharing", () => {
             wallet.payer,
             wallet.publicKey,
             null,
-            1
+            0
         );
         [authInsecure, authInsecureBump] =
             web3.PublicKey.findProgramAddressSync(
@@ -173,12 +174,57 @@ describe("solana-pda-sharing", () => {
                 vault: vaultInsecure.address,
                 withdrawDestination: withdrawDestinationFake,
                 authority: authInsecure,
-                signer: walletFake.publicKey,
+                signer: walletFake.publicKey, // 指定交易签名者
             })
             .signers([walletFake])
             .rpc();
 
         const account = await spl.getAccount(connection, vaultInsecure.address);
+        expect(Number(account.amount)).to.equal(0);
+    });
+
+    it("Withdraw secure", async () => {
+        // const withdrawDestinationAccount = await getAccount(
+        //     provider.connection,
+        //     withdrawDestination
+        // );
+        await program.methods
+            .initializePoolSecure()
+            .accounts({
+                pool: authSecure,
+                mint: mint,
+                withdrawDestination: withdrawDestination,
+                payer: wallet.payer.publicKey,
+                vault: vaultRecommended.publicKey,
+            })
+            .signers([vaultRecommended])
+            .rpc();
+
+        await new Promise((x) => setTimeout(x, 1000));
+
+        await spl.mintTo(
+            connection,
+            wallet.payer,
+            mint,
+            vaultRecommended.publicKey,
+            wallet.payer,
+            100
+        );
+
+        await program.methods
+            .withdrawSecure()
+            .accounts({
+                pool: authSecure,
+                vault: vaultRecommended.publicKey,
+                withdrawDestination: withdrawDestination,
+                // authority: authSecure,
+            })
+            .rpc();
+
+        const account = await spl.getAccount(
+            connection,
+            vaultRecommended.publicKey
+        );
         expect(Number(account.amount)).to.equal(0);
     });
 });
