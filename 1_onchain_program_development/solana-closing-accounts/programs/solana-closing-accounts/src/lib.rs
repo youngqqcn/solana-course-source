@@ -144,21 +144,36 @@ pub struct RedeemWinnings<'info> {
 
 #[derive(Accounts)]
 pub struct RedeemWinningsSecure<'info> {
-    #[account(mut, seeds=[user.key().as_ref()], bump, close=user, has_one = user)]
+    #[account(
+        mut,
+        seeds=[user.key().as_ref()],
+        bump,
+        close=user,
+        has_one = user
+    )]
     pub lottery_entry: Account<'info, LotteryAccount>,
 
     #[account(mut)]
     pub user: Signer<'info>,
 
     // #[account(init_if_needed)] // 整理在客户端创建了， 因此这里不做初始化
-    #[account(mut, constraint = user_ata.key() == lottery_entry.user_ata)]
+    #[account(
+        mut,
+        constraint = user_ata.key() == lottery_entry.user_ata
+    )]
     pub user_ata: Account<'info, TokenAccount>,
 
-    #[account(mut, constraint = reward_mint.key() == user_ata.mint)]
+    #[account(
+        mut,
+        constraint = reward_mint.key() == user_ata.mint
+    )]
     pub reward_mint: Account<'info, Mint>,
 
     /// CHECK:
-    #[account(seeds=[MINT_SEED.as_ref()], bump)]
+    #[account(
+        seeds=[MINT_SEED.as_ref()],
+        bump
+    )]
     pub mint_auth: AccountInfo<'info>,
 
     pub token_program: Program<'info, Token>,

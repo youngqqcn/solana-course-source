@@ -19,6 +19,7 @@ describe("solana-closing-accounts", () => {
     // Configure the client to use the local cluster.
     anchor.setProvider(anchor.AnchorProvider.env());
 
+    const connection = anchor.AnchorProvider.env().connection;
     const program = anchor.workspace
         .SolanaClosingAccounts as Program<SolanaClosingAccounts>;
 
@@ -163,6 +164,7 @@ describe("solana-closing-accounts", () => {
             .signers([attacker2])
             .rpc();
 
+        let rentExemptLamports_attack = 0;
         try {
             for (let i = 0; i < 2; i++) {
                 const tx = new Transaction();
@@ -182,19 +184,24 @@ describe("solana-closing-accounts", () => {
                 );
 
                 // user adds instruction to refund dataAccount lamports
-                const rentExemptLamports =
+                rentExemptLamports_attack =
                     await provider.connection.getMinimumBalanceForRentExemption(
                         82,
                         "confirmed"
                     );
 
+                console.log(
+                    "===> rentExemptLamports: ",
+                    rentExemptLamports_attack
+                );
+
                 // =================== 牛逼: 重新打一笔租金, 不让系统回收账户,
-                // =================== 因为Solana的垃圾回收是整个交易结束之后才进行，而一笔交易包含多个指令
+                //  但是，因为一个交易执行完成之后，账户被设置了 CLOSED_ACCOUNT_DISCRIMINATOR
                 tx.add(
                     SystemProgram.transfer({
                         fromPubkey: attacker2.publicKey,
                         toPubkey: attackerLotteryEntry2,
-                        lamports: rentExemptLamports,
+                        lamports: rentExemptLamports_attack,
                     })
                 );
                 // send tx
@@ -208,11 +215,61 @@ describe("solana-closing-accounts", () => {
             }
         } catch (error) {
             console.error(error);
-            expect(error).to.include("The given account is owned by a different program than expected");
+            expect(error.message).to.include(
+                "The given account is owned by a different program than expected"
+            );
         }
 
         let ata = await getAccount(provider.connection, attackerAta2);
 
         expect(Number(ata.amount)).to.equal(10);
+
+        // 查看 attackerLotteryEntry2 的owner 是 System Program
+        const accInfo = await connection.getAccountInfo(attackerLotteryEntry2);
+
+        expect(accInfo.owner.toBase58()).to.equal(
+            SystemProgram.programId.toBase58()
+        );
+        expect(accInfo.data.length).to.equal(0);
+
+        // 第一笔交易中包含2个指令，第一笔交易的2个指令都成功，
+        // 所以，第一笔交易中的第一个指令redeemWinningsSecure 执行结束之后,
+        //  attackerLotteryEntry2账户被重置了，但是attackerLotteryEntry2账户还是存在的, 没有被Solana回收
+        //  因此， 第二个指令的发送 Lamports的指令也是可以成功的
+        expect(accInfo.lamports).to.equal(rentExemptLamports_attack);
+
+        // 测试force_defund, 此时账户已经被关闭，data已经被清空，owner也被改变了
+        //
+        //
+        // close约束是在指令的主逻辑执行完成后才开始执行，close包含3个操作：
+        //    1, 将账户的而lamports转入target账户中
+        //    2, 将账户数据清零
+        //    3, 将账户的owner设置为System Program
+        // 注意，solana进行垃圾回收的时机是在 整个交易 执行完成之后进行
+        try {
+            const tx2 = new Transaction();
+            tx2.add(
+                await program.methods
+                    .forceDefund()
+                    .accounts({
+                        dataAccount: attackerLotteryEntry2,
+                        destination: attacker2.publicKey,
+                    })
+                    .instruction()
+            );
+
+            // send tx
+            await sendAndConfirmTransaction(provider.connection, tx2, [
+                attacker2,
+            ]);
+
+            // 验证force_refund 后，ata 应该是 0
+            // const ata2 = await getAccount(provider.connection, attackerAta2);
+            // expect(Number(ata2.amount)).to.equal(0);
+            throw new Error("failed");
+        } catch (error: any) {
+            console.error(error);
+            expect(error.message).to.include("data.len() > 8");
+        }
     });
 });
