@@ -4,7 +4,7 @@ import { Program } from "@coral-xyz/anchor";
 import { SolanaPdaSharing } from "../target/types/solana_pda_sharing";
 import { Keypair } from "@solana/web3.js";
 import * as spl from "@solana/spl-token";
-import { expect } from "chai";
+import { assert, expect } from "chai";
 import { getAccount } from "@solana/spl-token";
 
 describe("solana-pda-sharing", () => {
@@ -191,7 +191,7 @@ describe("solana-pda-sharing", () => {
         await program.methods
             .initializePoolSecure()
             .accounts({
-                pool: authSecure,
+                // pool: authSecure,
                 mint: mint,
                 withdrawDestination: withdrawDestination,
                 payer: wallet.payer.publicKey,
@@ -226,5 +226,50 @@ describe("solana-pda-sharing", () => {
             vaultRecommended.publicKey
         );
         expect(Number(account.amount)).to.equal(0);
+    });
+
+    it("Disallow to other withdrawDestination", async () => {
+        try {
+            await spl.mintTo(
+                connection,
+                wallet.payer,
+                mint,
+                vaultRecommended.publicKey,
+                wallet.payer,
+                100
+            );
+
+            await program.methods
+                .withdrawSecure()
+                .accounts({
+                    pool: authSecure,
+                    vault: vaultRecommended.publicKey,
+                    withdrawDestination: withdrawDestinationFake,
+                })
+                .rpc();
+        } catch (error) {
+            console.log(error);
+            expect(error);
+        }
+    });
+
+    it("Secure pool initialization doesn't allow wrong vault", async () => {
+        try {
+            await program.methods
+                .initializePoolSecure()
+                .accounts({
+                    // pool: authSecure,
+                    mint: mint,
+                    vault: vaultInsecure.address,
+                    withdrawDestination: withdrawDestination,
+                })
+                .signers([vaultRecommended])
+                .rpc();
+
+            assert.fail("expected error");
+        } catch (error) {
+            console.log(error.message);
+            expect(error);
+        }
     });
 });
