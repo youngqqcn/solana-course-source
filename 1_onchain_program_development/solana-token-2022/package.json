@@ -1,0 +1,15 @@
+{
+  "name": "solana-token-2022",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "license": "MIT",
+  "dependencies": {
+    "@solana-developers/helpers": "^2.3.0",
+    "@solana/spl-token": "^0.4.8",
+    "@solana/web3.js": "^1.95.1",
+    "typescript": "^5.5.4"
+  },
+  "scripts": {
+    "start": "ts-node src/index.ts"
+  }
+}
