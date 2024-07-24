@@ -93,7 +93,7 @@ describe("anchor-token-staking-yqq", () => {
         expect(Number(ata.amount)).to.equal(100);
     });
 
-    it("initialized pool", async () => {
+    it("initialize pool", async () => {
         const sig = await program.methods
             .initializePool()
             .accounts({
@@ -103,5 +103,16 @@ describe("anchor-token-staking-yqq", () => {
             .rpc();
 
         console.log(sig);
+    });
+    it("initialize stakeinfo", async () => {
+        const sig2 = await program.methods
+            .initializeStakeInfo()
+            .accounts({
+                stakeTokenMint: stakeTokenMint,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
+            })
+            .rpc();
+
+        console.log(sig2);
     });
 });
