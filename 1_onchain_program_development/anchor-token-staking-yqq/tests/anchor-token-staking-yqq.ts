@@ -12,7 +12,7 @@ import {
     TOKEN_2022_PROGRAM_ID,
     Account,
 } from "@solana/spl-token";
-import { Connection, Keypair, Signer } from "@solana/web3.js";
+import { Connection, Keypair, PublicKey, Signer } from "@solana/web3.js";
 import { safeAirdrop } from "./utils/utils";
 import { expect } from "chai";
 
@@ -29,9 +29,9 @@ describe("anchor-token-staking-yqq", () => {
     const payer: Signer =
         anchor.workspace.AnchorTokenStakingYqq.provider.wallet.payer;
     console.log(payer.publicKey);
-    let stakeTokenMint = undefined;
-    let user1 = Keypair.generate();
-    let user2 = Keypair.generate();
+    let stakeTokenMint: PublicKey = undefined;
+    let user1: Keypair = Keypair.generate();
+    let user2: Keypair = Keypair.generate();
     let user2ATA: Account = undefined;
 
     before(async () => {
@@ -83,13 +83,25 @@ describe("anchor-token-staking-yqq", () => {
         );
 
         console.log("mintTo sig: ", sig.toString());
+
+        let ata = await getAccount(
+            connection,
+            user2ATA.address,
+            connection.commitment,
+            TOKEN_2022_PROGRAM_ID
+        );
+        expect(Number(ata.amount)).to.equal(100);
     });
 
     it("initialized pool", async () => {
-        // let ata = await getAccount(connection, user2ATA);
-        // expect(Number(ata.amount)).to.equal(100);
-        // Add your test here.
-        // const tx = await program.methods.initialize().accounts({}).rpc();
-        // console.log("Your transaction signature", tx);
+        const sig = await program.methods
+            .initializePool()
+            .accounts({
+                stakeTokenMint: stakeTokenMint, // 质押代币的token mint
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
+            })
+            .rpc();
+
+        console.log(sig);
     });
 });

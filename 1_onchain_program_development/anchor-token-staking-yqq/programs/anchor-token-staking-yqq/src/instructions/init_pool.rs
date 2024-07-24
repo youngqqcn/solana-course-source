@@ -22,7 +22,9 @@ pub struct InitializePool<'info> {
     #[account(
         init,
         payer=payer,
-        space= 8 + size_of::<UncheckedAccount>()
+        space= 8 + size_of::<UncheckedAccount>(),
+        seeds = [b"POOL_AUTH", stake_token_mint.key().as_ref()],
+        bump
     )]
     pub pool_authority: UncheckedAccount<'info>,
 
@@ -41,11 +43,17 @@ pub struct InitializePool<'info> {
     #[account()]
     pub stake_token_mint: InterfaceAccount<'info, Mint>,
 
+    // TODO:
     // 质押奖励的 token mint
     #[account(
         init,
         payer=payer,
-        space= 8 + size_of::<Mint>()
+        // space= 8 + size_of::<Mint>(),
+        seeds=[b"REWARDS_TOKEN_SEED", stake_token_mint.key().as_ref() ],
+        bump,
+        token::token_program = stake_token_mint.program,
+        mint::authority = pool_authority,
+        mint::decimals=0,
     )]
     pub rewards_token_mint: InterfaceAccount<'info, Mint>,
 
