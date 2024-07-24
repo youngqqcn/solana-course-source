@@ -1,12 +1,12 @@
 use anchor_lang::prelude::*;
 
-
 pub const STAKE_POOL_STATE_SEED: &str = "state";
 pub const VAULT_SEED: &str = "vault";
 pub const VAULT_AUTH_SEED: &str = "vault_authority";
 pub const STAKE_ENTRY_SEED: &str = "stake_entry";
 
 
+// 存储pool的状态的账户
 #[account]
 pub struct PoolState {
     pub bump: u8,
@@ -19,8 +19,7 @@ pub struct PoolState {
     pub vault_authority: Pubkey,
 }
 
-
-
+// 保存每个用户stake的相关信息
 #[account]
 pub struct StakeEntry {
     pub user: Pubkey,

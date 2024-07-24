@@ -45,7 +45,7 @@ describe("anchor-token-staking", () => {
         program.programId
     );
 
-    it(" Create Staking Token Mint with Token22 Program", async () => {
+    it(" Create Staking Token Mint with Token Program", async () => {
         await safeAirdrop(vaultAuthority, provider.connection);
         await safeAirdrop(provider.wallet.publicKey, provider.connection);
         await safeAirdrop(payer.publicKey, provider.connection);
@@ -65,7 +65,7 @@ describe("anchor-token-staking", () => {
         console.log("Staking token mint: ", stakingTokenMint.toBase58());
     });
 
-    it(" Create test Token22 token to stake", async () => {
+    it(" Create test Token token to stake", async () => {
         // create new token mint
         testTokenMint = await createMint(
             provider.connection,
@@ -134,15 +134,10 @@ describe("anchor-token-staking", () => {
         await program.methods
             .initPool()
             .accounts({
-                // poolAuthority: vaultAuthority,
-                // poolState: pool,
                 tokenMint: testTokenMint,
-                // tokenVault: stakeVault,
                 stakingTokenMint: stakingTokenMint,
                 payer: payer.publicKey,
                 tokenProgram: TOKEN_PROGRAM_ID,
-                // systemProgram: SystemProgram.programId,
-                // rent: SYSVAR_RENT_PUBKEY,
             })
             .signers([payer])
             .rpc();
@@ -175,13 +170,9 @@ describe("anchor-token-staking", () => {
             .initStakeEntry()
             .accounts({
                 user: payer.publicKey,
-                // userStakeEntry: user1StakeEntry,
-                // userStakeTokenAccount: user1StakeAta,
                 stakingTokenMint: stakingTokenMint,
-                // poolState: pool,
+                poolState: pool, // 必须传入
                 tokenProgram: TOKEN_PROGRAM_ID,
-                // associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-                // systemProgram: SystemProgram.programId,
             })
             .signers([payer])
             .rpc();
@@ -232,15 +223,10 @@ describe("anchor-token-staking", () => {
         await program.methods
             .stake(new anchor.BN(transferAmount))
             .accounts({
-                // poolState: pool,
                 tokenMint: testTokenMint,
-                // poolAuthority: vaultAuthority,
-                // tokenVault: stakeVault,
                 user: payer.publicKey,
                 userTokenAccount: user1Ata,
-                // userStakeEntry: user1StakeEntry,
                 tokenProgram: TOKEN_PROGRAM_ID,
-                // systemProgram: SystemProgram.programId,
             })
             .signers([payer])
             .rpc();
@@ -317,17 +303,12 @@ describe("anchor-token-staking", () => {
         await program.methods
             .unstake()
             .accounts({
-                // poolState: pool,
                 tokenMint: testTokenMint,
-                // poolAuthority: vaultAuthority,
-                // tokenVault: stakeVault,
                 user: payer.publicKey,
                 userTokenAccount: user1Ata,
-                // userStakeEntry: user1StakeEntry,
                 stakingTokenMint: stakingTokenMint,
                 userStakeTokenAccount: user1StakeAta,
                 tokenProgram: TOKEN_PROGRAM_ID,
-                // systemProgram: SystemProgram.programId,
             })
             .signers([payer])
             .rpc();

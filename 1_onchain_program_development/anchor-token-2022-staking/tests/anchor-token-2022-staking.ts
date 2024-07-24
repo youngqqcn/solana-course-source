@@ -114,13 +114,13 @@ describe("anchor-token-2022-staking", () => {
     });
 
     it("[Token22] Create test stake pool with Token22 tokens!", async () => {
-        const [poolState, poolBump] = await PublicKey.findProgramAddress(
+        const [poolState, poolBump] = PublicKey.findProgramAddressSync(
             [testTokenMint.toBuffer(), Buffer.from("state")],
             program.programId
         );
         pool = poolState;
 
-        const [vault, vaultBump] = await PublicKey.findProgramAddress(
+        const [vault, vaultBump] = PublicKey.findProgramAddressSync(
             [
                 testTokenMint.toBuffer(),
                 vaultAuthority.toBuffer(),
@@ -161,7 +161,7 @@ describe("anchor-token-2022-staking", () => {
     it("[Token22] Create stake entry for user", async () => {
         const poolStateAcct = await program.account.poolState.fetch(pool);
 
-        const [stakeEntry, stakeEntryBump] = await PublicKey.findProgramAddress(
+        const [stakeEntry, stakeEntryBump] = PublicKey.findProgramAddressSync(
             [
                 payer.publicKey.toBuffer(),
                 poolStateAcct.tokenMint.toBuffer(),
@@ -175,13 +175,9 @@ describe("anchor-token-2022-staking", () => {
             .initStakeEntry()
             .accounts({
                 user: payer.publicKey,
-                // userStakeEntry: user1StakeEntry,
-                // userStakeTokenAccount: user1StakeAta,
+                poolState: pool, // 必须传入
                 stakingTokenMint: stakingTokenMint,
-                // poolState: pool,
                 tokenProgram: TOKEN_2022_PROGRAM_ID,
-                // associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-                // systemProgram: SystemProgram.programId,
             })
             .signers([payer])
             .rpc();
@@ -232,15 +228,10 @@ describe("anchor-token-2022-staking", () => {
         await program.methods
             .stake(new anchor.BN(transferAmount))
             .accounts({
-                // poolState: pool,
                 tokenMint: testTokenMint,
-                // poolAuthority: vaultAuthority,
-                // tokenVault: stakeVault,
                 user: payer.publicKey,
                 userTokenAccount: user1Ata,
-                // userStakeEntry: user1StakeEntry,
                 tokenProgram: TOKEN_2022_PROGRAM_ID,
-                // systemProgram: SystemProgram.programId,
             })
             .signers([payer])
             .rpc();
@@ -317,17 +308,12 @@ describe("anchor-token-2022-staking", () => {
         await program.methods
             .unstake()
             .accounts({
-                // poolState: pool,
                 tokenMint: testTokenMint,
-                // poolAuthority: vaultAuthority,
-                // tokenVault: stakeVault,
                 user: payer.publicKey,
                 userTokenAccount: user1Ata,
-                // userStakeEntry: user1StakeEntry,
                 stakingTokenMint: stakingTokenMint,
                 userStakeTokenAccount: user1StakeAta,
                 tokenProgram: TOKEN_2022_PROGRAM_ID,
-                // systemProgram: SystemProgram.programId,
             })
             .signers([payer])
             .rpc();
