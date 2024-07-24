@@ -30,7 +30,7 @@ pub fn handler_stake(ctx: Context<Stake>, stake_amount: u64) -> Result<()> {
     // update user stake entry
     user_entry.balance = user_entry.balance.checked_add(stake_amount).unwrap();
     msg!("User stake balance: {}", user_entry.balance);
-    user_entry.last_staked = Clock::get().unwrap().unix_timestamp;
+    user_entry.last_staked = Clock::get().unwrap().unix_timestamp; // 获取时间戳(链上)
 
     Ok(())
 }

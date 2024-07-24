@@ -28,20 +28,25 @@ pub fn handler_unstake(ctx: Context<Unstake>) -> Result<()> {
         return Err(StakeError::OverdrawError.into());
     }
 
+    // 获取 pool_authority 的 seeds 和 bump
     // program signer seeds
     let auth_bump = ctx.accounts.pool_state.vault_auth_bump;
     let auth_seeds = &[VAULT_AUTH_SEED.as_bytes(), &[auth_bump]];
     let signer = &[&auth_seeds[..]];
 
+    // 将用户质押token返还给用户
     // transfer staked tokens
     transfer_checked(ctx.accounts.transfer_checked_ctx(signer), amount, decimals)?;
 
+    // 计算质押奖励
     // mint users staking rewards, 10x amount of staked tokens
     let stake_rewards = amount.checked_mul(10).unwrap();
 
+    // 给用户发放质押奖励
     // mint rewards to user
     mint_to(ctx.accounts.mint_to_ctx(signer), stake_rewards)?;
 
+    // 更新 pool_state 和 user_stake_entry的状态
     // borrow mutable references
     let pool_state = &mut ctx.accounts.pool_state;
     let user_entry = &mut ctx.accounts.user_stake_entry;
@@ -94,13 +99,15 @@ pub struct Unstake<'info> {
         @ StakeError::InvalidUser
     )]
     pub user: Signer<'info>,
+
     #[account(
         mut,
         constraint = user_token_account.mint == pool_state.token_mint
         @ StakeError::InvalidMint,
         token::token_program = token_program
     )]
-    pub user_token_account: InterfaceAccount<'info, token_interface::TokenAccount>,
+    pub user_token_account: InterfaceAccount<'info, token_interface::TokenAccount>, // 质押的token mint
+
     #[account(
         mut,
         seeds = [user.key().as_ref(), pool_state.token_mint.key().as_ref(), STAKE_ENTRY_SEED.as_bytes()],
@@ -108,6 +115,7 @@ pub struct Unstake<'info> {
 
     )]
     pub user_stake_entry: Account<'info, StakeEntry>,
+
     // Mint of staking token
     #[account(
         mut,
@@ -116,7 +124,8 @@ pub struct Unstake<'info> {
         constraint = staking_token_mint.key() == pool_state.staking_token_mint
         @ StakeError::InvalidStakingTokenMint
     )]
-    pub staking_token_mint: InterfaceAccount<'info, token_interface::Mint>,
+    pub staking_token_mint: InterfaceAccount<'info, token_interface::Mint>, // 质押奖励的token
+
     #[account(
         mut,
         token::mint = staking_token_mint,
@@ -125,13 +134,14 @@ pub struct Unstake<'info> {
         constraint = user_stake_token_account.key() == user_stake_entry.user_stake_token_account
         @ StakeError::InvalidUserStakeTokenAccount
     )]
+    // 质押奖励的token的token account , 是一个 ATA , 在创建stake_entry中已经初始化了，因此这里不需要初始化
     pub user_stake_token_account: InterfaceAccount<'info, token_interface::TokenAccount>,
+
     pub token_program: Interface<'info, token_interface::TokenInterface>,
     pub system_program: Program<'info, System>,
 }
 
 impl<'info> Unstake<'info> {
-    // transfer_checked for Token2022
     pub fn transfer_checked_ctx<'a>(
         &'a self,
         seeds: &'a [&[&[u8]]],
