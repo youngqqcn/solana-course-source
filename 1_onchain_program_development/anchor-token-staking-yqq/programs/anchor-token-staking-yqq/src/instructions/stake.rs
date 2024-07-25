@@ -32,10 +32,16 @@ pub fn handler_stake(ctx: Context<Stake>, stake_amount: u64) -> Result<()> {
     //     .unwrap();
 
     stake_info.stake_amount = 100;
-    msg!("stake info : {}", ctx.accounts.stake_info.key());
+    // msg!("stake info : {}", ctx.accounts.stake_info.key());
+    msg!(
+        "stake info : {}, stake amount: {}",
+        stake_info.key(),
+        stake_info.stake_amount
+    );
 
     // 增加总余额
     pool_state.total_stake = pool_state.total_stake.checked_add(stake_amount).unwrap();
+    msg!("pool total stake: {}", pool_state.total_stake);
 
     Ok(())
 }
@@ -62,6 +68,7 @@ pub struct Stake<'info> {
     pub stake_token_mint: InterfaceAccount<'info, Mint>,
 
     #[account(
+        mut,
         seeds=[b"POOL_STATE_SEED", stake_token_mint.key().as_ref()],
         bump,
     )]

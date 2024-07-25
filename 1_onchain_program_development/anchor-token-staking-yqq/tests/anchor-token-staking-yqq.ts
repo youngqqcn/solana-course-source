@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
+import { Program, web3 } from "@coral-xyz/anchor";
 import { AnchorTokenStakingYqq } from "../target/types/anchor_token_staking_yqq";
 import {
     ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -23,6 +23,7 @@ import { safeAirdrop } from "./utils/utils";
 import { expect } from "chai";
 import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
 import { getLogs } from "@solana-developers/helpers";
+import { publicKey } from "@coral-xyz/anchor/dist/cjs/utils";
 
 describe("anchor-token-staking-yqq", () => {
     // Configure the client to use the local cluster.
@@ -44,6 +45,7 @@ describe("anchor-token-staking-yqq", () => {
     // let payerATA: Account = undefined;
 
     let stakeAmount = 100;
+    let rewardsRatio = 100; // 100倍
 
     before(async () => {
         await safeAirdrop(user1.publicKey, connection);
@@ -166,6 +168,7 @@ describe("anchor-token-staking-yqq", () => {
 
         console.log(await getLogs(connection, sig));
 
+        // 查询质押token是否有退还
         let user2AtaInfo = await getAccount(
             connection,
             user2ATA.address,
@@ -173,5 +176,35 @@ describe("anchor-token-staking-yqq", () => {
             TOKEN_2022_PROGRAM_ID
         );
         expect(Number(user2AtaInfo.amount)).to.equal(stakeAmount);
+
+        // 查询奖励
+        console.log("stakeTokenMint: ", stakeTokenMint.toBase58());
+        const [rewardsTokenMint] = PublicKey.findProgramAddressSync(
+            [Buffer.from("REWARDS_TOKEN_SEED"), stakeTokenMint.toBuffer()],
+            program.programId
+        );
+        console.log("rewardsTokenMint: ", rewardsTokenMint.toBase58());
+
+        let [user2RewardsATA] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("STAKE_INFO"),
+                stakeTokenMint.toBuffer(),
+                rewardsTokenMint.toBuffer(),
+            ],
+            program.programId
+        );
+
+        console.log("user2RewardsATA: ", user2RewardsATA.toBase58());
+
+        let rewardsAtaInfo = await getAccount(
+            connection,
+            user2RewardsATA,
+            connection.commitment,
+            TOKEN_2022_PROGRAM_ID
+        );
+
+        expect(Number(rewardsAtaInfo.amount)).to.equal(
+            stakeAmount * rewardsRatio
+        );
     });
 });

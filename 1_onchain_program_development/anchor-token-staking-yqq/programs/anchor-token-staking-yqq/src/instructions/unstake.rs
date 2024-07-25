@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
-    token_2022::{transfer_checked, TransferChecked},
+    token_2022::{mint_to, transfer_checked, MintTo, TransferChecked},
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
 
@@ -9,11 +9,7 @@ use crate::{PoolState, StakeInfo};
 pub fn handler_unstake(ctx: Context<UnStake>) -> Result<()> {
     // TODO: 将用户质押的token释放，转给用户
     let k = ctx.accounts.stake_token_mint.key().clone();
-    let seeds = &[
-        b"POOL_AUTH",
-        k.as_ref(),
-        &[ctx.bumps.pool_authority],
-    ];
+    let seeds = &[b"POOL_AUTH", k.as_ref(), &[ctx.bumps.pool_authority]];
     let signer_seeds = &[&seeds[..]];
 
     let cpi_ctx = CpiContext::new_with_signer(
@@ -35,6 +31,41 @@ pub fn handler_unstake(ctx: Context<UnStake>) -> Result<()> {
         stake_amount,
         ctx.accounts.stake_token_mint.decimals,
     )?;
+
+
+    msg!("stake_token_mint: {}", ctx.accounts.stake_token_mint.key());
+    msg!("rewards_token_mint: {}", ctx.accounts.rewards_token_mint.key());
+    msg!("rewards_token_ata: {}", ctx.accounts.rewards_token_ata.key());
+
+    // 发放奖励代币
+    let rewards_cpi_ctx = CpiContext::new_with_signer(
+        ctx.accounts.token_program.to_account_info(),
+        MintTo {
+            mint: ctx.accounts.rewards_token_mint.to_account_info(),
+            to: ctx.accounts.rewards_token_ata.to_account_info(),
+            authority: ctx.accounts.pool_authority.to_account_info(),
+        },
+        signer_seeds,
+    );
+
+    let rewards_amount = stake_amount.checked_mul(100).unwrap();
+    mint_to(rewards_cpi_ctx, rewards_amount)?;
+
+    msg!(
+        "mint {} rewards to {} success",
+        rewards_amount,
+        ctx.accounts.rewards_token_ata.key()
+    );
+
+    // 更新状态
+    let pool_state = &mut ctx.accounts.pool_state;
+    let stake_info = &mut ctx.accounts.stake_info;
+
+    pool_state.total_stake = pool_state.total_stake.checked_sub(stake_amount).unwrap();
+    stake_info.stake_amount = stake_info.stake_amount.checked_sub(stake_amount).unwrap();
+    stake_info.latest_stake_ts = Clock::get().unwrap().unix_timestamp as u64;
+    msg!("pool total stake: {}", pool_state.total_stake);
+    msg!("stake amount: {}", stake_info.stake_amount);
 
     Ok(())
 }
@@ -61,6 +92,7 @@ pub struct UnStake<'info> {
     pub stake_token_mint: InterfaceAccount<'info, Mint>,
 
     #[account(
+        mut,
         seeds=[b"REWARDS_TOKEN_SEED", stake_token_mint.key().as_ref() ],
         bump,
         mint::token_program = token_program,
@@ -76,6 +108,7 @@ pub struct UnStake<'info> {
 
     // 用户接受质押奖励的 ATA
     #[account(
+        mut,
         token::mint = rewards_token_mint,
         token::authority = pool_authority,
         seeds = [b"STAKE_INFO", stake_token_mint.key().as_ref(), rewards_token_mint.key().as_ref() ],
