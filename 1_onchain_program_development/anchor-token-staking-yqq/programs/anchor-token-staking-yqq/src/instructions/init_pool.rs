@@ -11,10 +11,7 @@ use crate::PoolState;
 pub fn handler_init_pool(ctx: Context<InitializePool>) -> Result<()> {
     let pool_state = &mut ctx.accounts.pool_state;
 
-    pool_state.pool_authority = ctx.accounts.pool_authority.key();
-    pool_state.auth_bump = ctx.bumps.pool_state;
     pool_state.stake_token_mint = ctx.accounts.stake_token_mint.key();
-    pool_state.rewards_token_mint = ctx.accounts.rewards_token_mint.key();
     pool_state.total_stake = 0;
 
     Ok(())
@@ -22,7 +19,6 @@ pub fn handler_init_pool(ctx: Context<InitializePool>) -> Result<()> {
 
 #[derive(Accounts)]
 pub struct InitializePool<'info> {
-    // TODO: 增加更多约束
     /// CHECK: 控制所有 stake pool的权限
     #[account(
         init,
@@ -43,10 +39,9 @@ pub struct InitializePool<'info> {
     )]
     pub pool_state: Account<'info, PoolState>,
 
-    // TODO: 增加更多约束
     // 质押token的token mint
     #[account(
-        // mint::authority = payer.key(), // 仅代币发行方可以创建pool, 方便处理
+        mint::authority = payer, // 仅代币发行方可以创建pool, 方便处理
         mint::token_program = token_program
     )]
     pub stake_token_mint: InterfaceAccount<'info, Mint>,
@@ -54,12 +49,12 @@ pub struct InitializePool<'info> {
     // 接受用户质押的token
     #[account(
         init,
-        token::mint=stake_token_mint,
-        token::authority = pool_authority,
-        token::token_program = token_program,
         payer=payer,
         seeds = [b"RECEIVE_STAKE_TOKEN_ATA_SEED", stake_token_mint.key().as_ref()],
         bump,
+        token::mint=stake_token_mint,
+        token::authority = pool_authority,
+        token::token_program = token_program,
     )]
     pub receive_stake_token_ata: InterfaceAccount<'info, TokenAccount>,
 
@@ -69,9 +64,10 @@ pub struct InitializePool<'info> {
         payer=payer,
         seeds=[b"REWARDS_TOKEN_SEED", stake_token_mint.key().as_ref() ],
         bump,
-        token::token_program = stake_token_mint.program,
+        mint::token_program = token_program,
         mint::authority = pool_authority,
         mint::decimals=0,
+        mint::freeze_authority=pool_authority,
     )]
     pub rewards_token_mint: InterfaceAccount<'info, Mint>,
 

@@ -7,8 +7,9 @@ import {
     getAccount,
     getOrCreateAssociatedTokenAccount,
     mintTo,
-    TOKEN_PROGRAM_ID,
+    TOKEN_2022_PROGRAM_ID,
     Account,
+    TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import {
     Keypair,
@@ -17,7 +18,7 @@ import {
     Signer,
 } from "@solana/web3.js";
 import { safeAirdrop } from "./utils/utils";
-import { expect } from "chai";
+import { assert, expect } from "chai";
 import { getLogs } from "@solana-developers/helpers";
 
 describe("anchor-token-staking-yqq", () => {
@@ -34,7 +35,7 @@ describe("anchor-token-staking-yqq", () => {
         anchor.workspace.AnchorTokenStakingYqq.provider.wallet.payer;
     console.log(payer.publicKey);
     let stakeTokenMint: PublicKey = undefined;
-    let user1: Keypair = Keypair.generate();
+    let hacker: Keypair = Keypair.generate();
     let user2: Keypair = Keypair.generate();
     let user2ATA: Account = undefined;
     // let payerATA: Account = undefined;
@@ -43,7 +44,7 @@ describe("anchor-token-staking-yqq", () => {
     let rewardsRatio = 100; // 100倍
 
     before(async () => {
-        await safeAirdrop(user1.publicKey, connection);
+        await safeAirdrop(hacker.publicKey, connection);
         await safeAirdrop(user2.publicKey, connection);
 
         stakeTokenMint = await createMint(
@@ -56,7 +57,7 @@ describe("anchor-token-staking-yqq", () => {
             {
                 commitment: connection.commitment,
             },
-            TOKEN_PROGRAM_ID
+            TOKEN_2022_PROGRAM_ID
         );
         console.log("stake token: ", stakeTokenMint);
 
@@ -70,7 +71,7 @@ describe("anchor-token-staking-yqq", () => {
             {
                 commitment: connection.commitment,
             },
-            TOKEN_PROGRAM_ID,
+            TOKEN_2022_PROGRAM_ID,
             ASSOCIATED_TOKEN_PROGRAM_ID
         );
 
@@ -87,7 +88,7 @@ describe("anchor-token-staking-yqq", () => {
             {
                 commitment: connection.commitment,
             },
-            TOKEN_PROGRAM_ID
+            TOKEN_2022_PROGRAM_ID
         );
 
         console.log("mintTo sig: ", sig.toString());
@@ -96,29 +97,104 @@ describe("anchor-token-staking-yqq", () => {
             connection,
             user2ATA.address,
             connection.commitment,
-            TOKEN_PROGRAM_ID
+            TOKEN_2022_PROGRAM_ID
         );
         expect(Number(ata.amount)).to.equal(100);
     });
 
-    it("initialize pool", async () => {
+    it("initialize pool with token mint owner, epected ok", async () => {
         const sig = await program.methods
             .initializePool()
             .accounts({
                 stakeTokenMint: stakeTokenMint, // 质押代币的token mint
-                tokenProgram: TOKEN_PROGRAM_ID,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
             })
             .rpc();
 
         console.log(sig);
     });
+
+    it("initialize pool with hacker, epected failed", async () => {
+        const fakeStakeTokenMint = await createMint(
+            connection,
+            payer,
+            payer.publicKey,
+            payer.publicKey,
+            0,
+            undefined,
+            {
+                commitment: connection.commitment,
+            },
+            TOKEN_2022_PROGRAM_ID
+        );
+        console.log("fakeStakeTokenMint: ", fakeStakeTokenMint);
+
+        try {
+            const tx = await program.methods
+                .initializePool()
+                .accounts({
+                    stakeTokenMint: fakeStakeTokenMint,
+                    tokenProgram: TOKEN_2022_PROGRAM_ID,
+                    payer: hacker.publicKey,
+                })
+                .transaction();
+
+            await sendAndConfirmTransaction(connection, tx, [hacker]);
+
+            assert.fail("expected failed transaction");
+        } catch (error) {
+            // console.error(error.message);
+            expect(error.message).include(
+                "A mint mint authority constraint was violated"
+            );
+        }
+    });
+
+    it("initialize pool with different Token Program, epected failed", async () => {
+        const fakeStakeTokenMint = await createMint(
+            connection,
+            payer,
+            payer.publicKey,
+            payer.publicKey,
+            0,
+            undefined,
+            {
+                commitment: connection.commitment,
+            },
+            TOKEN_PROGRAM_ID // 故意用不一样的 programId
+        );
+        console.log("fakeStakeTokenMint: ", fakeStakeTokenMint);
+
+        try {
+            const tx = await program.methods
+                .initializePool()
+                .accounts({
+                    stakeTokenMint: fakeStakeTokenMint,
+                    tokenProgram: TOKEN_2022_PROGRAM_ID, //  故意不一样 programId
+                    payer: payer.publicKey,
+                })
+                .transaction();
+
+            await sendAndConfirmTransaction(connection, tx, [payer]);
+
+            assert.fail("expected failed transaction");
+        } catch (error) {
+            console.error(error.message);
+            expect(error.message).to.include(
+                "incorrect program id for instruction"
+            );
+        }
+    });
+
     it("initialize stakeinfo", async () => {
         const sig2 = await program.methods
             .initializeStakeInfo()
             .accounts({
                 stakeTokenMint: stakeTokenMint,
-                tokenProgram: TOKEN_PROGRAM_ID,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
+                payer: user2.publicKey // 必须指定payer
             })
+            .signers([user2])
             .rpc();
 
         console.log(sig2);
@@ -130,7 +206,7 @@ describe("anchor-token-staking-yqq", () => {
             .accounts({
                 stakeTokenMint: stakeTokenMint,
                 payer: user2.publicKey,
-                tokenProgram: TOKEN_PROGRAM_ID,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
             })
             .transaction();
 
@@ -143,7 +219,7 @@ describe("anchor-token-staking-yqq", () => {
             connection,
             user2ATA.address,
             connection.commitment,
-            TOKEN_PROGRAM_ID
+            TOKEN_2022_PROGRAM_ID
         );
         expect(Number(user2AtaInfo.amount)).to.equal(0);
     });
@@ -156,7 +232,7 @@ describe("anchor-token-staking-yqq", () => {
             .accounts({
                 stakeTokenMint: stakeTokenMint,
                 payer: user2.publicKey,
-                tokenProgram: TOKEN_PROGRAM_ID,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
             })
             .transaction();
 
@@ -170,7 +246,7 @@ describe("anchor-token-staking-yqq", () => {
             connection,
             user2ATA.address,
             connection.commitment,
-            TOKEN_PROGRAM_ID
+            TOKEN_2022_PROGRAM_ID
         );
         expect(Number(user2AtaInfo.amount)).to.equal(unstakeAmount);
 
@@ -197,7 +273,7 @@ describe("anchor-token-staking-yqq", () => {
             connection,
             user2RewardsATA,
             connection.commitment,
-            TOKEN_PROGRAM_ID
+            TOKEN_2022_PROGRAM_ID
         );
 
         expect(Number(rewardsAtaInfo.amount)).to.equal(

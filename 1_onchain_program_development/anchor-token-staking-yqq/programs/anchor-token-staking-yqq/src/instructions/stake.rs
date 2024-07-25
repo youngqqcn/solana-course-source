@@ -4,7 +4,7 @@ use anchor_spl::{
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
 
-use crate::{PoolState, StakeInfo};
+use crate::{PoolState, StakeError, StakeInfo};
 
 pub fn handler_stake(ctx: Context<Stake>, stake_amount: u64) -> Result<()> {
     // TODO: 转移 stake token
@@ -51,8 +51,10 @@ pub struct Stake<'info> {
 
     #[account(
         mut,
-        seeds = [b"STAKE_INFO", stake_token_mint.key().as_ref()],
-        bump
+        seeds = [b"STAKE_INFO", stake_token_mint.key().as_ref(), payer.key().as_ref()],
+        bump,
+        // 比对stake_info 是否和payer是否匹配, 黑客
+        constraint= (payer.key() == stake_info.user.key()) @ StakeError::StakeAccountNotMatch,
     )]
     pub stake_info: Account<'info, StakeInfo>,
 
@@ -65,6 +67,7 @@ pub struct Stake<'info> {
         mut,
         seeds=[b"POOL_STATE_SEED", stake_token_mint.key().as_ref()],
         bump,
+        has_one = stake_token_mint,
     )]
     pub pool_state: Account<'info, PoolState>,
 

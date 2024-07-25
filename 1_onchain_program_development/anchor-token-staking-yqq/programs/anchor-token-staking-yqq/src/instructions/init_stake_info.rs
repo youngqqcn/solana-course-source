@@ -9,13 +9,10 @@ pub fn handler_init_stake_info(ctx: Context<InitializeStakeInfo>) -> Result<()> 
     let stake_info = &mut ctx.accounts.stake_info;
 
     stake_info.user = ctx.accounts.payer.key();
-    stake_info.bump = ctx.bumps.stake_info;
     stake_info.pool_state = ctx.accounts.pool_state.key();
     stake_info.stake_amount = 0;
     stake_info.latest_stake_ts = 0;
     stake_info.stake_token_mint = ctx.accounts.stake_token_mint.key();
-    stake_info.rewards_token_mint = ctx.accounts.rewards_token_mint.key();
-    stake_info.rewards_token_ata = ctx.accounts.rewards_token_ata.key();
 
     Ok(())
 }
@@ -33,7 +30,7 @@ pub struct InitializeStakeInfo<'info> {
         init,
         payer=payer,
         space= 8 +  size_of::<StakeInfo>(),
-        seeds = [b"STAKE_INFO", stake_token_mint.key().as_ref()],
+        seeds = [b"STAKE_INFO", stake_token_mint.key().as_ref(), payer.key().as_ref()],
         bump
     )]
     pub stake_info: Account<'info, StakeInfo>,
@@ -53,7 +50,6 @@ pub struct InitializeStakeInfo<'info> {
         seeds=[b"POOL_STATE_SEED", stake_token_mint.key().as_ref()],
         bump,
         has_one = stake_token_mint,
-        has_one = pool_authority,
     )]
     pub pool_state: Account<'info, PoolState>,
 

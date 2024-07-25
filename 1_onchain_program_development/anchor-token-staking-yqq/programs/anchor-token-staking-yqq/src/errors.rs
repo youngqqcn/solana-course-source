@@ -1,8 +1,5 @@
 use anchor_lang::prelude::*;
 
-
-
-
 #[error_code]
 pub enum StakeError {
     #[msg("invalid unstake amount")]
@@ -16,4 +13,7 @@ pub enum StakeError {
 
     #[msg("token program type not match")]
     TokenProgramTypeNotMatch,
+
+    #[msg("stake user account not match")]
+    StakeAccountNotMatch,
 }

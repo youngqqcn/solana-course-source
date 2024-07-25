@@ -97,7 +97,7 @@ pub struct UnStake<'info> {
 
     #[account(
         mut,
-        seeds = [b"STAKE_INFO", stake_token_mint.key().as_ref()],
+        seeds = [b"STAKE_INFO", stake_token_mint.key().as_ref(), payer.key().as_ref()],
         bump,
         constraint = stake_info.stake_amount >= unstake_amount @  StakeError::InvalidUnStakeAmount
     )]
@@ -113,7 +113,7 @@ pub struct UnStake<'info> {
         seeds=[b"REWARDS_TOKEN_SEED", stake_token_mint.key().as_ref() ],
         bump,
         mint::token_program = token_program,
-        mint::authority = pool_state.pool_authority,
+        mint::authority = pool_authority,
     )]
     pub rewards_token_mint: InterfaceAccount<'info, Mint>,
 
