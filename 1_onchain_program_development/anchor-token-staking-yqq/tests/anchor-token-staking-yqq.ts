@@ -39,6 +39,7 @@ describe("anchor-token-staking-yqq", () => {
     let user2: Keypair = Keypair.generate();
     let user2ATA: Account = undefined;
     // let payerATA: Account = undefined;
+    // 获取用户 user2 stake_info  PDA地址
 
     let stakeAmount = 100;
     let rewardsRatio = 100; // 100倍
@@ -179,7 +180,7 @@ describe("anchor-token-staking-yqq", () => {
 
             assert.fail("expected failed transaction");
         } catch (error) {
-            console.error(error.message);
+            // console.error(error.message);
             expect(error.message).to.include(
                 "incorrect program id for instruction"
             );
@@ -187,26 +188,36 @@ describe("anchor-token-staking-yqq", () => {
     });
 
     it("initialize stakeinfo", async () => {
-        const sig2 = await program.methods
+        const tx = await program.methods
             .initializeStakeInfo()
             .accounts({
                 stakeTokenMint: stakeTokenMint,
                 tokenProgram: TOKEN_2022_PROGRAM_ID,
-                payer: user2.publicKey // 必须指定payer
+                payer: user2.publicKey, // 必须指定payer
+                // stakeInfo: user2StakeInfoPDA,
             })
-            .signers([user2])
-            .rpc();
+            .transaction();
 
-        console.log(sig2);
+        await sendAndConfirmTransaction(connection, tx, [user2]);
     });
 
     it("stake expect ok", async () => {
+        const [user2StakeInfoPDA] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("STAKE_INFO"),
+                stakeTokenMint.toBuffer(),
+                user2.publicKey.toBuffer(),
+            ],
+            program.programId
+        );
+
         const tx = await program.methods
             .stake(new anchor.BN(stakeAmount))
             .accounts({
                 stakeTokenMint: stakeTokenMint,
                 payer: user2.publicKey,
                 tokenProgram: TOKEN_2022_PROGRAM_ID,
+                stakeInfo: user2StakeInfoPDA,
             })
             .transaction();
 
@@ -260,9 +271,9 @@ describe("anchor-token-staking-yqq", () => {
 
         let [user2RewardsATA] = PublicKey.findProgramAddressSync(
             [
-                Buffer.from("STAKE_INFO"),
+                Buffer.from("USER_REWARDS_ATA_SEED"),
                 stakeTokenMint.toBuffer(),
-                rewardsTokenMint.toBuffer(),
+                user2.publicKey.toBuffer(),
             ],
             program.programId
         );
@@ -279,5 +290,96 @@ describe("anchor-token-staking-yqq", () => {
         expect(Number(rewardsAtaInfo.amount)).to.equal(
             unstakeAmount * rewardsRatio
         );
+    });
+
+    it("stake with other stake_info", async () => {
+        const hackerATA = await getOrCreateAssociatedTokenAccount(
+            connection,
+            hacker,
+            stakeTokenMint,
+            hacker.publicKey,
+            true,
+            connection.commitment,
+            {
+                commitment: connection.commitment,
+            },
+            TOKEN_2022_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+
+        console.log(" hackerATA: ", hackerATA);
+
+        await mintTo(
+            connection,
+            hacker,
+            stakeTokenMint,
+            hackerATA.address,
+            payer.publicKey,
+            stakeAmount,
+            [hacker, payer],
+            {
+                commitment: connection.commitment,
+            },
+            TOKEN_2022_PROGRAM_ID
+        );
+
+        // 获取用户 user2 stake_info  PDA地址
+        const [user2StakeInfoPDA] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("STAKE_INFO"),
+                stakeTokenMint.toBuffer(),
+                user2.publicKey.toBuffer(),
+            ],
+            program.programId
+        );
+
+        const tx1 = await program.methods
+            .initializeStakeInfo()
+            .accounts({
+                stakeTokenMint: stakeTokenMint,
+                payer: hacker.publicKey,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
+            })
+            .transaction();
+        await sendAndConfirmTransaction(connection, tx1, [hacker]);
+
+        // 获取stakeInfo PDA
+        const [hackerStakeInfoPDA] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("STAKE_INFO"),
+                stakeTokenMint.toBuffer(),
+                hacker.publicKey.toBuffer(),
+            ],
+            program.programId
+        );
+
+        console.log(
+            "===========hackerStakeInfoPDA : ",
+            hackerStakeInfoPDA.toBase58()
+        );
+
+        const hackerStakeInfo = await program.account.stakeInfo.fetch(
+            hackerStakeInfoPDA
+        );
+
+        try {
+            const tx = await program.methods
+                .stake(new anchor.BN(1))
+                .accounts({
+                    stakeTokenMint: stakeTokenMint,
+                    tokenProgram: TOKEN_2022_PROGRAM_ID, //  故意不一样 programId
+                    stakeInfo: hackerStakeInfoPDA,
+                    payer: user2.publicKey,
+                })
+                .transaction();
+
+            await sendAndConfirmTransaction(connection, tx, [user2]);
+            expect.fail("expected fail");
+        } catch (error) {
+            // console.error(error);
+
+            // expect(error.message).to.include("stake user account not match");
+            expect(error);
+        }
     });
 });

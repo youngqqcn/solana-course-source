@@ -58,10 +58,10 @@ pub struct InitializeStakeInfo<'info> {
         payer=payer,
         token::mint = rewards_token_mint,
         token::authority = pool_authority,
-        seeds = [b"STAKE_INFO", stake_token_mint.key().as_ref(), rewards_token_mint.key().as_ref() ],
+        seeds = [b"USER_REWARDS_ATA_SEED", stake_token_mint.key().as_ref(),  payer.key().as_ref() ],
         bump,
     )]
-    pub rewards_token_ata: InterfaceAccount<'info, TokenAccount>,
+    pub user_rewards_token_ata: InterfaceAccount<'info, TokenAccount>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
