@@ -1,7 +1,10 @@
 use std::mem::size_of;
 
 use anchor_lang::prelude::*;
-use anchor_spl::{associated_token::AssociatedToken, token_interface::{Mint, TokenAccount, TokenInterface}};
+use anchor_spl::{
+    associated_token::AssociatedToken,
+    token_interface::{Mint, TokenAccount, TokenInterface},
+};
 
 use crate::PoolState;
 
@@ -44,10 +47,9 @@ pub struct InitializePool<'info> {
     // 质押token的token mint
     #[account(
         // mint::authority = payer.key(), // 仅代币发行方可以创建pool, 方便处理
-        // constraint = stake_token_mint.program == token_program,
+        mint::token_program = token_program
     )]
     pub stake_token_mint: InterfaceAccount<'info, Mint>,
-
 
     // 接受用户质押的token
     #[account(
@@ -61,12 +63,10 @@ pub struct InitializePool<'info> {
     )]
     pub receive_stake_token_ata: InterfaceAccount<'info, TokenAccount>,
 
-    // TODO:
     // 质押奖励的 token mint
     #[account(
         init,
         payer=payer,
-        // space= 8 + size_of::<Mint>(),
         seeds=[b"REWARDS_TOKEN_SEED", stake_token_mint.key().as_ref() ],
         bump,
         token::token_program = stake_token_mint.program,

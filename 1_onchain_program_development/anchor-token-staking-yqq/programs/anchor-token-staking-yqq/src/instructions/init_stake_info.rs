@@ -44,26 +44,22 @@ pub struct InitializeStakeInfo<'info> {
     pub stake_token_mint: InterfaceAccount<'info, Mint>,
 
     #[account(
-        // space= 8 + size_of::<Mint>(),
         seeds=[b"REWARDS_TOKEN_SEED", stake_token_mint.key().as_ref() ],
         bump,
-        // token::token_program = token_program,
-        // mint::token_program = token_program,
-        // mint::authority = pool_state.pool_authority,
-        // mint::decimals=0,
     )]
     pub rewards_token_mint: InterfaceAccount<'info, Mint>,
 
     #[account(
         seeds=[b"POOL_STATE_SEED", stake_token_mint.key().as_ref()],
         bump,
+        has_one = stake_token_mint,
+        has_one = pool_authority,
     )]
     pub pool_state: Account<'info, PoolState>,
 
     #[account(
         init,
         payer=payer,
-        // space= 8 + size_of::<TokenAccount>(),
         token::mint = rewards_token_mint,
         token::authority = pool_authority,
         seeds = [b"STAKE_INFO", stake_token_mint.key().as_ref(), rewards_token_mint.key().as_ref() ],

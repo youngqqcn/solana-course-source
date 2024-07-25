@@ -26,13 +26,7 @@ pub fn handler_stake(ctx: Context<Stake>, stake_amount: u64) -> Result<()> {
     let stake_info = &mut ctx.accounts.stake_info;
     let pool_state = &mut ctx.accounts.pool_state;
 
-    // stake_info.stake_amount = stake_info
-    //     .stake_amount
-    //     .checked_add(stake_amount)
-    //     .unwrap();
-
-    stake_info.stake_amount = 100;
-    // msg!("stake info : {}", ctx.accounts.stake_info.key());
+    stake_info.stake_amount = stake_amount;
     msg!(
         "stake info : {}, stake amount: {}",
         stake_info.key(),

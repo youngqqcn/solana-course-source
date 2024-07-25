@@ -7,7 +7,7 @@ import {
     getAccount,
     getOrCreateAssociatedTokenAccount,
     mintTo,
-    TOKEN_PROGRAM_ID,
+    TOKEN_2022_PROGRAM_ID,
     Account,
 } from "@solana/spl-token";
 import {
@@ -56,7 +56,7 @@ describe("anchor-token-staking-yqq", () => {
             {
                 commitment: connection.commitment,
             },
-            TOKEN_PROGRAM_ID
+            TOKEN_2022_PROGRAM_ID
         );
         console.log("stake token: ", stakeTokenMint);
 
@@ -70,7 +70,7 @@ describe("anchor-token-staking-yqq", () => {
             {
                 commitment: connection.commitment,
             },
-            TOKEN_PROGRAM_ID,
+            TOKEN_2022_PROGRAM_ID,
             ASSOCIATED_TOKEN_PROGRAM_ID
         );
 
@@ -87,7 +87,7 @@ describe("anchor-token-staking-yqq", () => {
             {
                 commitment: connection.commitment,
             },
-            TOKEN_PROGRAM_ID
+            TOKEN_2022_PROGRAM_ID
         );
 
         console.log("mintTo sig: ", sig.toString());
@@ -96,41 +96,41 @@ describe("anchor-token-staking-yqq", () => {
             connection,
             user2ATA.address,
             connection.commitment,
-            TOKEN_PROGRAM_ID
+            TOKEN_2022_PROGRAM_ID
         );
         expect(Number(ata.amount)).to.equal(100);
     });
 
-    it("initialize pool", async () => {
+    it("[token2022]initialize pool", async () => {
         const sig = await program.methods
             .initializePool()
             .accounts({
                 stakeTokenMint: stakeTokenMint, // 质押代币的token mint
-                tokenProgram: TOKEN_PROGRAM_ID,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
             })
             .rpc();
 
         console.log(sig);
     });
-    it("initialize stakeinfo", async () => {
+    it("[token2022]initialize stakeinfo", async () => {
         const sig2 = await program.methods
             .initializeStakeInfo()
             .accounts({
                 stakeTokenMint: stakeTokenMint,
-                tokenProgram: TOKEN_PROGRAM_ID,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
             })
             .rpc();
 
         console.log(sig2);
     });
 
-    it("stake expect ok", async () => {
+    it("[token2022]stake expect ok", async () => {
         const tx = await program.methods
             .stake(new anchor.BN(stakeAmount))
             .accounts({
                 stakeTokenMint: stakeTokenMint,
                 payer: user2.publicKey,
-                tokenProgram: TOKEN_PROGRAM_ID,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
             })
             .transaction();
 
@@ -143,12 +143,12 @@ describe("anchor-token-staking-yqq", () => {
             connection,
             user2ATA.address,
             connection.commitment,
-            TOKEN_PROGRAM_ID
+            TOKEN_2022_PROGRAM_ID
         );
         expect(Number(user2AtaInfo.amount)).to.equal(0);
     });
 
-    it("unstake expect ok", async () => {
+    it("[token2022]unstake expect ok", async () => {
         const unstakeAmount = Math.floor(stakeAmount / 2);
 
         const tx = await program.methods
@@ -156,7 +156,7 @@ describe("anchor-token-staking-yqq", () => {
             .accounts({
                 stakeTokenMint: stakeTokenMint,
                 payer: user2.publicKey,
-                tokenProgram: TOKEN_PROGRAM_ID,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
             })
             .transaction();
 
@@ -170,7 +170,7 @@ describe("anchor-token-staking-yqq", () => {
             connection,
             user2ATA.address,
             connection.commitment,
-            TOKEN_PROGRAM_ID
+            TOKEN_2022_PROGRAM_ID
         );
         expect(Number(user2AtaInfo.amount)).to.equal(unstakeAmount);
 
@@ -197,7 +197,7 @@ describe("anchor-token-staking-yqq", () => {
             connection,
             user2RewardsATA,
             connection.commitment,
-            TOKEN_PROGRAM_ID
+            TOKEN_2022_PROGRAM_ID
         );
 
         expect(Number(rewardsAtaInfo.amount)).to.equal(

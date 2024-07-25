@@ -4,9 +4,32 @@ use anchor_spl::{
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
 
-use crate::{PoolState, StakeInfo};
+use crate::{PoolState, StakeError, StakeInfo};
 
-pub fn handler_unstake(ctx: Context<UnStake>) -> Result<()> {
+pub fn handler_unstake(ctx: Context<UnStake>, unstake_amount: u64) -> Result<()> {
+    // 先更新状态，然后再执行操作
+    let stake_amount = ctx.accounts.stake_info.stake_amount;
+    msg!("stake info : {}", ctx.accounts.stake_info.key());
+    msg!("stake_amount: {}", stake_amount);
+    let pool_state = &mut ctx.accounts.pool_state;
+    let stake_info = &mut ctx.accounts.stake_info;
+
+    // 判断余额是否足够
+    // require!(
+    //     stake_info.stake_amount >= unstake_amount,
+    //     StakeError::InvalidUnStakeAmount
+    // );
+    // require!(
+    //     pool_state.total_stake >= unstake_amount,
+    //     StakeError::PoolBalanceNotEnough
+    // );
+
+    pool_state.total_stake = pool_state.total_stake.checked_sub(unstake_amount).unwrap();
+    stake_info.stake_amount = stake_info.stake_amount.checked_sub(unstake_amount).unwrap();
+    stake_info.latest_stake_ts = Clock::get().unwrap().unix_timestamp as u64;
+    msg!("pool total stake: {}", pool_state.total_stake);
+    msg!("stake amount: {}", stake_info.stake_amount);
+
     // TODO: 将用户质押的token释放，转给用户
     let k = ctx.accounts.stake_token_mint.key().clone();
     let seeds = &[b"POOL_AUTH", k.as_ref(), &[ctx.bumps.pool_authority]];
@@ -23,19 +46,21 @@ pub fn handler_unstake(ctx: Context<UnStake>) -> Result<()> {
         signer_seeds,
     );
 
-    let stake_amount = ctx.accounts.stake_info.stake_amount;
-    msg!("stake info : {}", ctx.accounts.stake_info.key());
-    msg!("stake_amount: {}", stake_amount);
     transfer_checked(
         cpi_ctx,
-        stake_amount,
+        unstake_amount,
         ctx.accounts.stake_token_mint.decimals,
     )?;
 
-
     msg!("stake_token_mint: {}", ctx.accounts.stake_token_mint.key());
-    msg!("rewards_token_mint: {}", ctx.accounts.rewards_token_mint.key());
-    msg!("rewards_token_ata: {}", ctx.accounts.rewards_token_ata.key());
+    msg!(
+        "rewards_token_mint: {}",
+        ctx.accounts.rewards_token_mint.key()
+    );
+    msg!(
+        "rewards_token_ata: {}",
+        ctx.accounts.rewards_token_ata.key()
+    );
 
     // 发放奖励代币
     let rewards_cpi_ctx = CpiContext::new_with_signer(
@@ -48,7 +73,7 @@ pub fn handler_unstake(ctx: Context<UnStake>) -> Result<()> {
         signer_seeds,
     );
 
-    let rewards_amount = stake_amount.checked_mul(100).unwrap();
+    let rewards_amount = unstake_amount.checked_mul(100).unwrap();
     mint_to(rewards_cpi_ctx, rewards_amount)?;
 
     msg!(
@@ -57,20 +82,11 @@ pub fn handler_unstake(ctx: Context<UnStake>) -> Result<()> {
         ctx.accounts.rewards_token_ata.key()
     );
 
-    // 更新状态
-    let pool_state = &mut ctx.accounts.pool_state;
-    let stake_info = &mut ctx.accounts.stake_info;
-
-    pool_state.total_stake = pool_state.total_stake.checked_sub(stake_amount).unwrap();
-    stake_info.stake_amount = stake_info.stake_amount.checked_sub(stake_amount).unwrap();
-    stake_info.latest_stake_ts = Clock::get().unwrap().unix_timestamp as u64;
-    msg!("pool total stake: {}", pool_state.total_stake);
-    msg!("stake amount: {}", stake_info.stake_amount);
-
     Ok(())
 }
 
 #[derive(Accounts)]
+#[instruction(unstake_amount: u64)]
 pub struct UnStake<'info> {
     /// CHECK: 控制所有 stake pool的权限
     #[account(
@@ -82,7 +98,8 @@ pub struct UnStake<'info> {
     #[account(
         mut,
         seeds = [b"STAKE_INFO", stake_token_mint.key().as_ref()],
-        bump
+        bump,
+        constraint = stake_info.stake_amount >= unstake_amount @  StakeError::InvalidUnStakeAmount
     )]
     pub stake_info: Account<'info, StakeInfo>,
 
@@ -103,6 +120,7 @@ pub struct UnStake<'info> {
     #[account(
         seeds=[b"POOL_STATE_SEED", stake_token_mint.key().as_ref()],
         bump,
+        constraint = pool_state.total_stake >= unstake_amount @  StakeError::PoolBalanceNotEnough
     )]
     pub pool_state: Account<'info, PoolState>,
 
