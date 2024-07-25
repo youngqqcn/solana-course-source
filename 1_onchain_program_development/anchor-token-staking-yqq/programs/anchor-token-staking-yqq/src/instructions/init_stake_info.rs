@@ -57,7 +57,7 @@ pub struct InitializeStakeInfo<'info> {
         init,
         payer=payer,
         token::mint = rewards_token_mint,
-        token::authority = pool_authority,
+        token::authority = payer, // 所有权交给用户
         seeds = [b"USER_REWARDS_ATA_SEED", stake_token_mint.key().as_ref(),  payer.key().as_ref() ],
         bump,
     )]

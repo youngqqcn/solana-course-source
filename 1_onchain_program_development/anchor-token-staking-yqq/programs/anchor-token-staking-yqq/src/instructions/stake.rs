@@ -7,6 +7,7 @@ use anchor_spl::{
 use crate::{PoolState, StakeError, StakeInfo};
 
 pub fn handler_stake(ctx: Context<Stake>, stake_amount: u64) -> Result<()> {
+    msg!("handler_stake");
     // TODO: 转移 stake token
     let cpi_ctx = CpiContext::new(
         ctx.accounts.token_program.to_account_info(),

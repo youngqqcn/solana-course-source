@@ -76,7 +76,7 @@ describe("anchor-token-staking-yqq", () => {
             ASSOCIATED_TOKEN_PROGRAM_ID
         );
 
-        console.log(" user2ATA: ", user2ATA);
+        console.log(" user2ATA: ", user2ATA.address.toBase58());
 
         const sig = await mintTo(
             connection,
@@ -128,7 +128,7 @@ describe("anchor-token-staking-yqq", () => {
             },
             TOKEN_2022_PROGRAM_ID
         );
-        console.log("fakeStakeTokenMint: ", fakeStakeTokenMint);
+        console.log("fakeStakeTokenMint: ", fakeStakeTokenMint.toBase58());
 
         try {
             const tx = await program.methods
@@ -307,7 +307,7 @@ describe("anchor-token-staking-yqq", () => {
             ASSOCIATED_TOKEN_PROGRAM_ID
         );
 
-        console.log(" hackerATA: ", hackerATA);
+        // console.log(" hackerATA: ", hackerATA);
 
         await mintTo(
             connection,
@@ -367,13 +367,13 @@ describe("anchor-token-staking-yqq", () => {
                 .stake(new anchor.BN(1))
                 .accounts({
                     stakeTokenMint: stakeTokenMint,
-                    tokenProgram: TOKEN_2022_PROGRAM_ID, //  故意不一样 programId
-                    stakeInfo: hackerStakeInfoPDA,
-                    payer: user2.publicKey,
+                    tokenProgram: TOKEN_2022_PROGRAM_ID,
+                    stakeInfo: user2StakeInfoPDA,
+                    payer: hacker.publicKey,
                 })
                 .transaction();
 
-            await sendAndConfirmTransaction(connection, tx, [user2]);
+            await sendAndConfirmTransaction(connection, tx, [hacker]);
             expect.fail("expected fail");
         } catch (error) {
             // console.error(error);
@@ -381,5 +381,193 @@ describe("anchor-token-staking-yqq", () => {
             // expect(error.message).to.include("stake user account not match");
             expect(error);
         }
+    });
+
+    it("new user stake", async () => {
+        const tmpUser = Keypair.generate();
+
+        await safeAirdrop(tmpUser.publicKey, connection);
+
+        const tmpUserATA = await getOrCreateAssociatedTokenAccount(
+            connection,
+            tmpUser,
+            stakeTokenMint,
+            tmpUser.publicKey,
+            true,
+            connection.commitment,
+            {
+                commitment: connection.commitment,
+            },
+            TOKEN_2022_PROGRAM_ID,
+            ASSOCIATED_TOKEN_PROGRAM_ID
+        );
+
+        console.log(" tmpUserATA: ", tmpUserATA.address.toBase58());
+
+        await mintTo(
+            connection,
+            tmpUser,
+            stakeTokenMint,
+            tmpUserATA.address,
+            payer.publicKey,
+            stakeAmount,
+            [tmpUser, payer],
+            {
+                commitment: connection.commitment,
+            },
+            TOKEN_2022_PROGRAM_ID
+        );
+
+        const tx1 = await program.methods
+            .initializeStakeInfo()
+            .accounts({
+                stakeTokenMint: stakeTokenMint,
+                payer: tmpUser.publicKey,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
+            })
+            .transaction();
+        await sendAndConfirmTransaction(connection, tx1, [tmpUser]);
+
+        const [poolStatePDA] = PublicKey.findProgramAddressSync(
+            [Buffer.from("POOL_STATE_SEED"), stakeTokenMint.toBuffer()],
+            program.programId
+        );
+
+        const [stakeInfoPDA] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("STAKE_INFO"),
+                stakeTokenMint.toBuffer(),
+                tmpUser.publicKey.toBuffer(),
+            ],
+            program.programId
+        );
+
+        const poolStateOld = await program.account.poolState.fetch(
+            poolStatePDA
+        );
+        const stakeInfoOld = await program.account.stakeInfo.fetch(
+            stakeInfoPDA
+        );
+
+        const tx_stake = await program.methods
+            .stake(new anchor.BN(stakeAmount))
+            .accounts({
+                stakeTokenMint: stakeTokenMint,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
+                payer: tmpUser.publicKey,
+                userStakeTokenAta: tmpUserATA.address,
+            })
+            .transaction();
+
+        await sendAndConfirmTransaction(connection, tx_stake, [tmpUser]);
+
+        const [tmpUserStakeInfoPDA] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("STAKE_INFO"),
+                stakeTokenMint.toBuffer(),
+                tmpUser.publicKey.toBuffer(),
+            ],
+            program.programId
+        );
+        const [user2StakeInfoPDA] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("STAKE_INFO"),
+                stakeTokenMint.toBuffer(),
+                user2.publicKey.toBuffer(),
+            ],
+            program.programId
+        );
+
+        const tmpUserStakeInfo = await program.account.stakeInfo.fetch(
+            tmpUserStakeInfoPDA
+        );
+
+        // 判断金额
+        expect(tmpUserStakeInfo.stakeAmount.toNumber()).to.equal(stakeAmount);
+        expect(tmpUserStakeInfo.stakeTokenMint.toBase58()).to.equal(
+            stakeTokenMint.toBase58()
+        );
+        expect(tmpUserStakeInfoPDA.toBase58()).not.equal(
+            user2StakeInfoPDA.toBase58()
+        );
+
+        const poolStateNew = await program.account.poolState.fetch(
+            poolStatePDA
+        );
+        const stakeInfoNew = await program.account.stakeInfo.fetch(
+            stakeInfoPDA
+        );
+
+        expect(poolStateNew.totalStake.toNumber()).to.equal(
+            poolStateOld.totalStake.toNumber() + stakeAmount
+        );
+
+        expect(stakeInfoNew.stakeAmount.toNumber()).to.equal(
+            stakeInfoOld.stakeAmount.toNumber() + stakeAmount
+        );
+
+        // unstake
+        const tx_unstake = await program.methods
+            .unstake(new anchor.BN(stakeAmount))
+            .accounts({
+                stakeTokenMint: stakeTokenMint,
+                payer: tmpUser.publicKey,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
+            })
+            .transaction();
+
+        const sig = await sendAndConfirmTransaction(connection, tx_unstake, [
+            tmpUser,
+        ]);
+        console.log(sig);
+
+        // console.log(await getLogs(connection, sig));
+
+        // 查询质押token是否有退还
+        let tmpUserAtaInfo = await getAccount(
+            connection,
+            tmpUserATA.address,
+            connection.commitment,
+            TOKEN_2022_PROGRAM_ID
+        );
+        expect(Number(tmpUserAtaInfo.amount)).to.equal(stakeAmount);
+
+        // 查询质押奖励
+        let [tmpUserRewardsATA] = PublicKey.findProgramAddressSync(
+            [
+                Buffer.from("USER_REWARDS_ATA_SEED"),
+                stakeTokenMint.toBuffer(),
+                tmpUser.publicKey.toBuffer(),
+            ],
+            program.programId
+        );
+
+        console.log("tmpUserRewardsATA: ", tmpUserRewardsATA.toBase58());
+
+        let rewardsAtaInfo = await getAccount(
+            connection,
+            tmpUserRewardsATA,
+            connection.commitment,
+            TOKEN_2022_PROGRAM_ID
+        );
+
+        expect(Number(rewardsAtaInfo.amount)).to.equal(
+            stakeAmount * rewardsRatio
+        );
+
+        const poolStateLatest = await program.account.poolState.fetch(
+            poolStatePDA
+        );
+        const stakeInfoLatest = await program.account.stakeInfo.fetch(
+            stakeInfoPDA
+        );
+
+        expect(poolStateLatest.totalStake.toNumber()).to.equal(
+            poolStateOld.totalStake.toNumber()
+        );
+
+        expect(stakeInfoLatest.stakeAmount.toNumber()).to.equal(
+            stakeInfoOld.stakeAmount.toNumber()
+        );
     });
 });

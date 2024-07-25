@@ -7,6 +7,7 @@ use anchor_spl::{
 use crate::{PoolState, StakeError, StakeInfo};
 
 pub fn handler_unstake(ctx: Context<UnStake>, unstake_amount: u64) -> Result<()> {
+    msg!("handler_unstake");
     // 先更新状态，然后再执行操作
     let stake_amount = ctx.accounts.stake_info.stake_amount;
     msg!("stake info : {}", ctx.accounts.stake_info.key());
@@ -59,7 +60,7 @@ pub fn handler_unstake(ctx: Context<UnStake>, unstake_amount: u64) -> Result<()>
     );
     msg!(
         "rewards_token_ata: {}",
-        ctx.accounts.rewards_token_ata.key()
+        ctx.accounts.user_rewards_token_ata.key()
     );
 
     // 发放奖励代币
@@ -67,7 +68,7 @@ pub fn handler_unstake(ctx: Context<UnStake>, unstake_amount: u64) -> Result<()>
         ctx.accounts.token_program.to_account_info(),
         MintTo {
             mint: ctx.accounts.rewards_token_mint.to_account_info(),
-            to: ctx.accounts.rewards_token_ata.to_account_info(),
+            to: ctx.accounts.user_rewards_token_ata.to_account_info(),
             authority: ctx.accounts.pool_authority.to_account_info(),
         },
         signer_seeds,
@@ -79,7 +80,7 @@ pub fn handler_unstake(ctx: Context<UnStake>, unstake_amount: u64) -> Result<()>
     msg!(
         "mint {} rewards to {} success",
         rewards_amount,
-        ctx.accounts.rewards_token_ata.key()
+        ctx.accounts.user_rewards_token_ata.key()
     );
 
     Ok(())
@@ -118,6 +119,7 @@ pub struct UnStake<'info> {
     pub rewards_token_mint: InterfaceAccount<'info, Mint>,
 
     #[account(
+        mut,
         seeds=[b"POOL_STATE_SEED", stake_token_mint.key().as_ref()],
         bump,
         constraint = pool_state.total_stake >= unstake_amount @  StakeError::PoolBalanceNotEnough
@@ -128,11 +130,11 @@ pub struct UnStake<'info> {
     #[account(
         mut,
         token::mint = rewards_token_mint,
-        token::authority = pool_authority,
+        token::authority = payer,
         seeds = [b"USER_REWARDS_ATA_SEED", stake_token_mint.key().as_ref(),  payer.key().as_ref() ],
         bump,
     )]
-    pub rewards_token_ata: InterfaceAccount<'info, TokenAccount>,
+    pub user_rewards_token_ata: InterfaceAccount<'info, TokenAccount>,
 
     // 用户的 stake token ATA
     #[account(
