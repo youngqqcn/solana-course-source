@@ -22,6 +22,13 @@ pub fn handler_init_pool(ctx: Context<InitializeStakeInfo>) -> Result<()> {
 
 #[derive(Accounts)]
 pub struct InitializeStakeInfo<'info> {
+    /// CHECK: 控制所有 stake pool的权限
+    #[account(
+        seeds = [b"POOL_AUTH", stake_token_mint.key().as_ref()],
+        bump
+    )]
+    pub pool_authority: UncheckedAccount<'info>,
+
     #[account(
         init,
         payer=payer,
@@ -58,7 +65,7 @@ pub struct InitializeStakeInfo<'info> {
         payer=payer,
         // space= 8 + size_of::<TokenAccount>(),
         token::mint = rewards_token_mint,
-        token::authority = payer,
+        token::authority = pool_authority,
         seeds = [b"STAKE_INFO", stake_token_mint.key().as_ref(), rewards_token_mint.key().as_ref() ],
         bump,
     )]

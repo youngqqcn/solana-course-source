@@ -20,8 +20,8 @@ pub mod anchor_token_staking_yqq {
         init_stake_info::handler_init_pool(ctx)
     }
 
-    pub fn stake(ctx: Context<Stake>) -> Result<()> {
-        Ok(())
+    pub fn stake(ctx: Context<Stake>, stake_amount: u64) -> Result<()> {
+        stake::handler_stake(ctx, stake_amount)
     }
 
     pub fn unstake(ctx: Context<UnStake>) -> Result<()> {

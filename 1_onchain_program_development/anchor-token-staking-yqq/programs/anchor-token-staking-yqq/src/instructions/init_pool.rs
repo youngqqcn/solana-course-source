@@ -1,7 +1,7 @@
 use std::mem::size_of;
 
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{Mint, TokenInterface};
+use anchor_spl::{associated_token::AssociatedToken, token_interface::{Mint, TokenAccount, TokenInterface}};
 
 use crate::PoolState;
 
@@ -12,6 +12,7 @@ pub fn handler_init_pool(ctx: Context<InitializePool>) -> Result<()> {
     pool_state.auth_bump = ctx.bumps.pool_state;
     pool_state.stake_token_mint = ctx.accounts.stake_token_mint.key();
     pool_state.rewards_token_mint = ctx.accounts.rewards_token_mint.key();
+    pool_state.total_stake = 0;
 
     Ok(())
 }
@@ -47,6 +48,19 @@ pub struct InitializePool<'info> {
     )]
     pub stake_token_mint: InterfaceAccount<'info, Mint>,
 
+
+    // 接受用户质押的token
+    #[account(
+        init,
+        token::mint=stake_token_mint,
+        token::authority = pool_authority,
+        token::token_program = token_program,
+        payer=payer,
+        seeds = [b"RECEIVE_STAKE_TOKEN_ATA_SEED", stake_token_mint.key().as_ref()],
+        bump,
+    )]
+    pub receive_stake_token_ata: InterfaceAccount<'info, TokenAccount>,
+
     // TODO:
     // 质押奖励的 token mint
     #[account(
@@ -65,5 +79,6 @@ pub struct InitializePool<'info> {
     pub payer: Signer<'info>,
 
     pub token_program: Interface<'info, TokenInterface>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }

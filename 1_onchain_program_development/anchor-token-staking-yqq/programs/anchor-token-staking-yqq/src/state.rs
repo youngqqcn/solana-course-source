@@ -8,6 +8,9 @@ pub struct PoolState {
     // pool_authority的bump
     pub auth_bump: u8,
 
+    // total 
+    pub total_stake: u64,
+
     // 质押token的token mint
     pub stake_token_mint: Pubkey,
 

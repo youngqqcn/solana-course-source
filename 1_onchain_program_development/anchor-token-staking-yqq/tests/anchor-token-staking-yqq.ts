@@ -12,9 +12,17 @@ import {
     TOKEN_2022_PROGRAM_ID,
     Account,
 } from "@solana/spl-token";
-import { Connection, Keypair, PublicKey, Signer } from "@solana/web3.js";
+import {
+    Connection,
+    Keypair,
+    PublicKey,
+    sendAndConfirmTransaction,
+    Signer,
+} from "@solana/web3.js";
 import { safeAirdrop } from "./utils/utils";
 import { expect } from "chai";
+import { SYSTEM_PROGRAM_ID } from "@coral-xyz/anchor/dist/cjs/native/system";
+import { getLogs } from "@solana-developers/helpers";
 
 describe("anchor-token-staking-yqq", () => {
     // Configure the client to use the local cluster.
@@ -33,6 +41,9 @@ describe("anchor-token-staking-yqq", () => {
     let user1: Keypair = Keypair.generate();
     let user2: Keypair = Keypair.generate();
     let user2ATA: Account = undefined;
+    // let payerATA: Account = undefined;
+
+    let stakeAmount =  100;
 
     before(async () => {
         await safeAirdrop(user1.publicKey, connection);
@@ -41,8 +52,8 @@ describe("anchor-token-staking-yqq", () => {
         stakeTokenMint = await createMint(
             connection,
             payer,
-            user1.publicKey,
-            user1.publicKey,
+            payer.publicKey,
+            payer.publicKey,
             0,
             undefined,
             {
@@ -56,7 +67,7 @@ describe("anchor-token-staking-yqq", () => {
             connection,
             payer,
             stakeTokenMint,
-            user1.publicKey,
+            user2.publicKey,
             true,
             connection.commitment,
             {
@@ -66,16 +77,16 @@ describe("anchor-token-staking-yqq", () => {
             ASSOCIATED_TOKEN_PROGRAM_ID
         );
 
-        console.log("user2 ATA: ", user2ATA);
+        console.log(" user2ATA: ", user2ATA);
 
         const sig = await mintTo(
             connection,
             payer,
             stakeTokenMint,
             user2ATA.address,
-            user1.publicKey,
-            100,
-            [user1],
+            payer.publicKey,
+            stakeAmount,
+            [payer],
             {
                 commitment: connection.commitment,
             },
@@ -114,5 +125,19 @@ describe("anchor-token-staking-yqq", () => {
             .rpc();
 
         console.log(sig2);
+    });
+
+    it("stake", async () => {
+        const tx = await program.methods
+            .stake(new anchor.BN(stakeAmount))
+            .accounts({
+                stakeTokenMint: stakeTokenMint,
+                payer: user2.publicKey,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
+            })
+            .transaction();
+
+        const sig = await sendAndConfirmTransaction(connection, tx, [user2]);
+        console.log(sig);
     });
 });
