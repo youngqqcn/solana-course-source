@@ -43,7 +43,7 @@ describe("anchor-token-staking-yqq", () => {
     let user2ATA: Account = undefined;
     // let payerATA: Account = undefined;
 
-    let stakeAmount =  100;
+    let stakeAmount = 100;
 
     before(async () => {
         await safeAirdrop(user1.publicKey, connection);
@@ -127,7 +127,7 @@ describe("anchor-token-staking-yqq", () => {
         console.log(sig2);
     });
 
-    it("stake", async () => {
+    it("stake expect ok", async () => {
         const tx = await program.methods
             .stake(new anchor.BN(stakeAmount))
             .accounts({
@@ -139,5 +139,39 @@ describe("anchor-token-staking-yqq", () => {
 
         const sig = await sendAndConfirmTransaction(connection, tx, [user2]);
         console.log(sig);
+
+        console.log(await getLogs(connection, sig));
+
+        let user2AtaInfo = await getAccount(
+            connection,
+            user2ATA.address,
+            connection.commitment,
+            TOKEN_2022_PROGRAM_ID
+        );
+        expect(Number(user2AtaInfo.amount)).to.equal(0);
+    });
+
+    it("unstake expect ok", async () => {
+        const tx = await program.methods
+            .unstake()
+            .accounts({
+                stakeTokenMint: stakeTokenMint,
+                payer: user2.publicKey,
+                tokenProgram: TOKEN_2022_PROGRAM_ID,
+            })
+            .transaction();
+
+        const sig = await sendAndConfirmTransaction(connection, tx, [user2]);
+        console.log(sig);
+
+        console.log(await getLogs(connection, sig));
+
+        let user2AtaInfo = await getAccount(
+            connection,
+            user2ATA.address,
+            connection.commitment,
+            TOKEN_2022_PROGRAM_ID
+        );
+        expect(Number(user2AtaInfo.amount)).to.equal(stakeAmount);
     });
 });

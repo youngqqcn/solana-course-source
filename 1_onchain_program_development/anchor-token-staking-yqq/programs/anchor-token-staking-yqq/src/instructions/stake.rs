@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
-    associated_token::AssociatedToken,
     token_2022::{transfer_checked, TransferChecked}, // 必须用 token_2022, 否则会报错
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
@@ -27,10 +26,13 @@ pub fn handler_stake(ctx: Context<Stake>, stake_amount: u64) -> Result<()> {
     let stake_info = &mut ctx.accounts.stake_info;
     let pool_state = &mut ctx.accounts.pool_state;
 
-    stake_info.stake_amount = stake_info
-        .stake_amount
-        .checked_add(stake_info.stake_amount)
-        .unwrap();
+    // stake_info.stake_amount = stake_info
+    //     .stake_amount
+    //     .checked_add(stake_amount)
+    //     .unwrap();
+
+    stake_info.stake_amount = 100;
+    msg!("stake info : {}", ctx.accounts.stake_info.key());
 
     // 增加总余额
     pool_state.total_stake = pool_state.total_stake.checked_add(stake_amount).unwrap();
@@ -48,6 +50,7 @@ pub struct Stake<'info> {
     pub pool_authority: UncheckedAccount<'info>,
 
     #[account(
+        mut,
         seeds = [b"STAKE_INFO", stake_token_mint.key().as_ref()],
         bump
     )]

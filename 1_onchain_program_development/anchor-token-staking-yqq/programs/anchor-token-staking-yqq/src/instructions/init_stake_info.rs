@@ -5,7 +5,7 @@ use anchor_spl::token_interface::{Mint, TokenAccount, TokenInterface};
 
 use crate::{PoolState, StakeInfo};
 
-pub fn handler_init_pool(ctx: Context<InitializeStakeInfo>) -> Result<()> {
+pub fn handler_init_stake_info(ctx: Context<InitializeStakeInfo>) -> Result<()> {
     let stake_info = &mut ctx.accounts.stake_info;
 
     stake_info.user = ctx.accounts.payer.key();

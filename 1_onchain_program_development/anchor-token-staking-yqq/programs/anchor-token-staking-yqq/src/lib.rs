@@ -17,7 +17,7 @@ pub mod anchor_token_staking_yqq {
     }
 
     pub fn initialize_stake_info(ctx: Context<InitializeStakeInfo>) -> Result<()> {
-        init_stake_info::handler_init_pool(ctx)
+        init_stake_info::handler_init_stake_info(ctx)
     }
 
     pub fn stake(ctx: Context<Stake>, stake_amount: u64) -> Result<()> {
@@ -25,6 +25,6 @@ pub mod anchor_token_staking_yqq {
     }
 
     pub fn unstake(ctx: Context<UnStake>) -> Result<()> {
-        Ok(())
+        unstake::handler_unstake(ctx)
     }
 }
