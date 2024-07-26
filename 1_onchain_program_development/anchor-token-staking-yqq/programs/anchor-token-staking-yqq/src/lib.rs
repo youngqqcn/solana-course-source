@@ -1,13 +1,12 @@
 use anchor_lang::prelude::*;
 
+pub mod errors;
 pub mod instructions;
 pub mod state;
-pub mod errors;
 
+pub use errors::*;
 pub use instructions::*;
 pub use state::*;
-pub use errors::*;
-
 
 declare_id!("CebQMir8nc7G4h3W6h6XL8YHGL76zffqgF6ZsWJciyRa");
 
@@ -30,5 +29,9 @@ pub mod anchor_token_staking_yqq {
 
     pub fn unstake(ctx: Context<UnStake>, unstake_amount: u64) -> Result<()> {
         unstake::handler_unstake(ctx, unstake_amount)
+    }
+
+    pub fn update_stake_ratio(ctx: Context<UpdateStakeRatio>, new_stake_ratio: u16) -> Result<()> {
+        update_stake_ratio::handler_update_stake_ratio(ctx, new_stake_ratio)
     }
 }

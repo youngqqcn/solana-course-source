@@ -1,4 +1,4 @@
-use std::mem::size_of;
+use std::{mem::size_of, str::FromStr};
 
 use anchor_lang::prelude::*;
 use anchor_spl::{
@@ -14,6 +14,8 @@ pub fn handler_init_pool(ctx: Context<InitializePool>) -> Result<()> {
     pool_state.stake_token_mint = ctx.accounts.stake_token_mint.key();
     pool_state.total_stake = 0;
     pool_state.rewards_ratio = DEFAULT_REWARDS_RATIO; // 10000%
+    // 默认管理员
+    pool_state.admin = Pubkey::from_str("7DxeAgFoxk9Ha3sdciWE4G4hsR9CUjPxsHAxTmuCJrop").unwrap();
 
     Ok(())
 }

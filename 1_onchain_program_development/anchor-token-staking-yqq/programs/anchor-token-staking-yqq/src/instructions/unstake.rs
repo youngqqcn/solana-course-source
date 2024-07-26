@@ -4,7 +4,7 @@ use anchor_spl::{
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
 
-use crate::{PoolState, StakeError, StakeInfo, state::*};
+use crate::{state::*, PoolState, StakeError, StakeInfo};
 
 pub fn handler_unstake(ctx: Context<UnStake>, unstake_amount: u64) -> Result<()> {
     msg!("handler_unstake");
@@ -23,7 +23,7 @@ pub fn handler_unstake(ctx: Context<UnStake>, unstake_amount: u64) -> Result<()>
 
     // TODO: 将用户质押的token释放，转给用户
     let stake_token_mint_pubkey = ctx.accounts.stake_token_mint.key(); // 接住临时变量
-    // 这里加上类型声明，不然编译器推导的有问题
+                                                                       // 这里加上类型声明，不然编译器推导的有问题
     let signer_seeds: &[&[&[u8]]] = &[&[
         b"POOL_AUTH",
         stake_token_mint_pubkey.as_ref(),
@@ -47,7 +47,12 @@ pub fn handler_unstake(ctx: Context<UnStake>, unstake_amount: u64) -> Result<()>
     );
 
     // 发放奖励代币
-    let rewards_amount = unstake_amount.checked_mul(100).unwrap();
+    let rewards_ratio: u64 = ctx.accounts.pool_state.rewards_ratio as u64;
+    let rewards_amount = unstake_amount
+        .checked_mul(rewards_ratio)
+        .unwrap()
+        .checked_div(100)
+        .unwrap();
     mint_to(ctx.accounts.mint_to_ctx(signer_seeds), rewards_amount)?;
 
     msg!(

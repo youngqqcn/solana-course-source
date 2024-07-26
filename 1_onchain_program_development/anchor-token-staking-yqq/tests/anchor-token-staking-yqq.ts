@@ -570,4 +570,27 @@ describe("anchor-token-staking-yqq", () => {
             stakeInfoOld.stakeAmount.toNumber()
         );
     });
+
+    it("update stake ratio, expect ok", async () => {
+        // 10倍
+        const new_ratio = 1000;
+        await program.methods
+            .updateStakeRatio(new_ratio)
+            .accounts({
+                stakeTokenMint: stakeTokenMint,
+                admin: payer.publicKey,
+            })
+            .rpc();
+
+        const [poolStatePDA] = PublicKey.findProgramAddressSync(
+            [Buffer.from("POOL_STATE_SEED"), stakeTokenMint.toBuffer()],
+            program.programId
+        );
+
+        const poolStateLatest = await program.account.poolState.fetch(
+            poolStatePDA
+        );
+
+        expect(poolStateLatest.rewardsRatio).to.equal(new_ratio);
+    });
 });

@@ -16,4 +16,12 @@ pub enum StakeError {
 
     #[msg("stake user account not match")]
     StakeAccountNotMatch,
+
+
+    #[msg("invalid stake ratio")]
+    InvalidStakeRatio,
+
+
+    #[msg("unauthorized")]
+    Unauthorized
 }
