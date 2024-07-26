@@ -4,7 +4,7 @@ use anchor_spl::{
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
 
-use crate::{PoolState, StakeError, StakeInfo};
+use crate::{state::*, PoolState, StakeError, StakeInfo};
 
 pub fn handler_stake(ctx: Context<Stake>, stake_amount: u64) -> Result<()> {
     msg!("handler_stake");
@@ -36,14 +36,14 @@ pub fn handler_stake(ctx: Context<Stake>, stake_amount: u64) -> Result<()> {
 pub struct Stake<'info> {
     /// CHECK: 控制所有 stake pool的权限
     #[account(
-        seeds = [b"POOL_AUTH", stake_token_mint.key().as_ref()],
+        seeds = [POOL_AUTH_SEED.as_bytes(), stake_token_mint.key().as_ref()],
         bump
     )]
     pub pool_authority: UncheckedAccount<'info>,
 
     #[account(
         mut,
-        seeds = [b"STAKE_INFO", stake_token_mint.key().as_ref(), payer.key().as_ref()],
+        seeds = [STAKE_INFO.as_bytes(), stake_token_mint.key().as_ref(), payer.key().as_ref()],
         bump,
         // 比对stake_info 是否和payer是否匹配, 黑客
         constraint= (payer.key() == stake_info.user.key()) @ StakeError::StakeAccountNotMatch,
@@ -57,7 +57,7 @@ pub struct Stake<'info> {
 
     #[account(
         mut,
-        seeds=[b"POOL_STATE_SEED", stake_token_mint.key().as_ref()],
+        seeds=[POOL_STATE_SEED.as_bytes(), stake_token_mint.key().as_ref()],
         bump,
         has_one = stake_token_mint,
     )]
@@ -78,7 +78,7 @@ pub struct Stake<'info> {
         token::mint=stake_token_mint,
         token::authority = pool_authority,
         token::token_program = token_program,
-        seeds = [b"RECEIVE_STAKE_TOKEN_ATA_SEED", stake_token_mint.key().as_ref()],
+        seeds = [RECEIVE_STAKE_TOKEN_ATA_SEED.as_bytes(), stake_token_mint.key().as_ref()],
         bump,
     )]
     pub receive_stake_token_ata: InterfaceAccount<'info, TokenAccount>,

@@ -4,7 +4,7 @@ use anchor_spl::{
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
 
-use crate::{PoolState, StakeError, StakeInfo};
+use crate::{PoolState, StakeError, StakeInfo, state::*};
 
 pub fn handler_unstake(ctx: Context<UnStake>, unstake_amount: u64) -> Result<()> {
     msg!("handler_unstake");
@@ -22,9 +22,13 @@ pub fn handler_unstake(ctx: Context<UnStake>, unstake_amount: u64) -> Result<()>
     msg!("stake amount: {}", stake_info.stake_amount);
 
     // TODO: 将用户质押的token释放，转给用户
-    let k = ctx.accounts.stake_token_mint.key().clone();
-    let seeds = &[b"POOL_AUTH", k.as_ref(), &[ctx.bumps.pool_authority]];
-    let signer_seeds = &[&seeds[..]];
+    let stake_token_mint_pubkey = ctx.accounts.stake_token_mint.key(); // 接住临时变量
+    // 这里加上类型声明，不然编译器推导的有问题
+    let signer_seeds: &[&[&[u8]]] = &[&[
+        b"POOL_AUTH",
+        stake_token_mint_pubkey.as_ref(),
+        &[ctx.bumps.pool_authority],
+    ]];
 
     transfer_checked(
         ctx.accounts.transfer_checked_ctx(signer_seeds),
@@ -60,14 +64,14 @@ pub fn handler_unstake(ctx: Context<UnStake>, unstake_amount: u64) -> Result<()>
 pub struct UnStake<'info> {
     /// CHECK: 控制所有 stake pool的权限
     #[account(
-        seeds = [b"POOL_AUTH", stake_token_mint.key().as_ref()],
+        seeds = [POOL_AUTH_SEED.as_bytes(), stake_token_mint.key().as_ref()],
         bump
     )]
     pub pool_authority: UncheckedAccount<'info>,
 
     #[account(
         mut,
-        seeds = [b"STAKE_INFO", stake_token_mint.key().as_ref(), payer.key().as_ref()],
+        seeds = [STAKE_INFO.as_bytes(), stake_token_mint.key().as_ref(), payer.key().as_ref()],
         bump,
         // 判断余额是否足够
         constraint = stake_info.stake_amount >= unstake_amount @  StakeError::InvalidUnStakeAmount,
@@ -81,7 +85,7 @@ pub struct UnStake<'info> {
 
     #[account(
         mut,
-        seeds=[b"REWARDS_TOKEN_SEED", stake_token_mint.key().as_ref() ],
+        seeds=[REWARDS_TOKEN_SEED.as_bytes(), stake_token_mint.key().as_ref() ],
         bump,
         mint::token_program = token_program,
         mint::authority = pool_authority,
@@ -90,7 +94,7 @@ pub struct UnStake<'info> {
 
     #[account(
         mut,
-        seeds=[b"POOL_STATE_SEED", stake_token_mint.key().as_ref()],
+        seeds=[POOL_STATE_SEED.as_bytes(), stake_token_mint.key().as_ref()],
         bump,
         constraint = pool_state.total_stake >= unstake_amount @  StakeError::PoolBalanceNotEnough
     )]
@@ -101,7 +105,7 @@ pub struct UnStake<'info> {
         mut,
         token::mint = rewards_token_mint,
         token::authority = payer,
-        seeds = [b"USER_REWARDS_ATA_SEED", stake_token_mint.key().as_ref(),  payer.key().as_ref() ],
+        seeds = [USER_REWARDS_ATA_SEED.as_bytes(), stake_token_mint.key().as_ref(),  payer.key().as_ref() ],
         bump,
     )]
     pub user_rewards_token_ata: InterfaceAccount<'info, TokenAccount>,
@@ -121,7 +125,7 @@ pub struct UnStake<'info> {
         token::mint=stake_token_mint,
         token::authority = pool_authority,
         token::token_program = token_program,
-        seeds = [b"RECEIVE_STAKE_TOKEN_ATA_SEED", stake_token_mint.key().as_ref()],
+        seeds = [RECEIVE_STAKE_TOKEN_ATA_SEED.as_bytes(), stake_token_mint.key().as_ref()],
         bump,
     )]
     pub receive_stake_token_ata: InterfaceAccount<'info, TokenAccount>,

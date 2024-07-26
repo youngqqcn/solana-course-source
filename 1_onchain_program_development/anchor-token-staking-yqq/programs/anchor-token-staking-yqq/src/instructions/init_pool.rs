@@ -6,13 +6,14 @@ use anchor_spl::{
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
 
-use crate::PoolState;
+use crate::{state::*, PoolState};
 
 pub fn handler_init_pool(ctx: Context<InitializePool>) -> Result<()> {
     let pool_state = &mut ctx.accounts.pool_state;
 
     pool_state.stake_token_mint = ctx.accounts.stake_token_mint.key();
     pool_state.total_stake = 0;
+    pool_state.rewards_ratio = DEFAULT_REWARDS_RATIO; // 10000%
 
     Ok(())
 }
@@ -24,7 +25,7 @@ pub struct InitializePool<'info> {
         init,
         payer=payer,
         space= 8 + size_of::<UncheckedAccount>(),
-        seeds = [b"POOL_AUTH", stake_token_mint.key().as_ref()],
+        seeds = [POOL_AUTH_SEED.as_bytes(), stake_token_mint.key().as_ref()],
         bump
     )]
     pub pool_authority: UncheckedAccount<'info>,
@@ -34,7 +35,7 @@ pub struct InitializePool<'info> {
         init,
         payer=payer,
         space= 8 + size_of::<PoolState>(),
-        seeds=[b"POOL_STATE_SEED", stake_token_mint.key().as_ref()],
+        seeds=[POOL_STATE_SEED.as_bytes(), stake_token_mint.key().as_ref()],
         bump,
     )]
     pub pool_state: Account<'info, PoolState>,
@@ -50,7 +51,7 @@ pub struct InitializePool<'info> {
     #[account(
         init,
         payer=payer,
-        seeds = [b"RECEIVE_STAKE_TOKEN_ATA_SEED", stake_token_mint.key().as_ref()],
+        seeds = [RECEIVE_STAKE_TOKEN_ATA_SEED.as_bytes(), stake_token_mint.key().as_ref()],
         bump,
         token::mint=stake_token_mint,
         token::authority = pool_authority,
@@ -62,7 +63,7 @@ pub struct InitializePool<'info> {
     #[account(
         init,
         payer=payer,
-        seeds=[b"REWARDS_TOKEN_SEED", stake_token_mint.key().as_ref() ],
+        seeds=[REWARDS_TOKEN_SEED.as_bytes(), stake_token_mint.key().as_ref() ],
         bump,
         mint::token_program = token_program,
         mint::authority = pool_authority,
