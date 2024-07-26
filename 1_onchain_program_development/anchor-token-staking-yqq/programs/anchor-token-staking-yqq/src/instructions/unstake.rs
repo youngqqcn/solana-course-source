@@ -15,16 +15,6 @@ pub fn handler_unstake(ctx: Context<UnStake>, unstake_amount: u64) -> Result<()>
     let pool_state = &mut ctx.accounts.pool_state;
     let stake_info = &mut ctx.accounts.stake_info;
 
-    // 判断余额是否足够
-    // require!(
-    //     stake_info.stake_amount >= unstake_amount,
-    //     StakeError::InvalidUnStakeAmount
-    // );
-    // require!(
-    //     pool_state.total_stake >= unstake_amount,
-    //     StakeError::PoolBalanceNotEnough
-    // );
-
     pool_state.total_stake = pool_state.total_stake.checked_sub(unstake_amount).unwrap();
     stake_info.stake_amount = stake_info.stake_amount.checked_sub(unstake_amount).unwrap();
     stake_info.latest_stake_ts = Clock::get().unwrap().unix_timestamp as u64;
@@ -36,19 +26,8 @@ pub fn handler_unstake(ctx: Context<UnStake>, unstake_amount: u64) -> Result<()>
     let seeds = &[b"POOL_AUTH", k.as_ref(), &[ctx.bumps.pool_authority]];
     let signer_seeds = &[&seeds[..]];
 
-    let cpi_ctx = CpiContext::new_with_signer(
-        ctx.accounts.token_program.to_account_info(),
-        TransferChecked {
-            from: ctx.accounts.receive_stake_token_ata.to_account_info(),
-            mint: ctx.accounts.stake_token_mint.to_account_info(),
-            to: ctx.accounts.user_stake_token_ata.to_account_info(),
-            authority: ctx.accounts.pool_authority.to_account_info(),
-        },
-        signer_seeds,
-    );
-
     transfer_checked(
-        cpi_ctx,
+        ctx.accounts.transfer_checked_ctx(signer_seeds),
         unstake_amount,
         ctx.accounts.stake_token_mint.decimals,
     )?;
@@ -64,18 +43,8 @@ pub fn handler_unstake(ctx: Context<UnStake>, unstake_amount: u64) -> Result<()>
     );
 
     // 发放奖励代币
-    let rewards_cpi_ctx = CpiContext::new_with_signer(
-        ctx.accounts.token_program.to_account_info(),
-        MintTo {
-            mint: ctx.accounts.rewards_token_mint.to_account_info(),
-            to: ctx.accounts.user_rewards_token_ata.to_account_info(),
-            authority: ctx.accounts.pool_authority.to_account_info(),
-        },
-        signer_seeds,
-    );
-
     let rewards_amount = unstake_amount.checked_mul(100).unwrap();
-    mint_to(rewards_cpi_ctx, rewards_amount)?;
+    mint_to(ctx.accounts.mint_to_ctx(signer_seeds), rewards_amount)?;
 
     msg!(
         "mint {} rewards to {} success",
@@ -100,7 +69,8 @@ pub struct UnStake<'info> {
         mut,
         seeds = [b"STAKE_INFO", stake_token_mint.key().as_ref(), payer.key().as_ref()],
         bump,
-        constraint = stake_info.stake_amount >= unstake_amount @  StakeError::InvalidUnStakeAmount
+        // 判断余额是否足够
+        constraint = stake_info.stake_amount >= unstake_amount @  StakeError::InvalidUnStakeAmount,
     )]
     pub stake_info: Account<'info, StakeInfo>,
 
@@ -138,22 +108,22 @@ pub struct UnStake<'info> {
 
     // 用户的 stake token ATA
     #[account(
-            mut,
-            associated_token::mint=stake_token_mint,
-            associated_token::authority = payer,
-            associated_token::token_program = token_program,
-        )]
+        mut,
+        associated_token::mint=stake_token_mint,
+        associated_token::authority = payer,
+        associated_token::token_program = token_program,
+    )]
     pub user_stake_token_ata: InterfaceAccount<'info, TokenAccount>,
 
     // 接受用户质押的token
     #[account(
-            mut,
-            token::mint=stake_token_mint,
-            token::authority = pool_authority,
-            token::token_program = token_program,
-            seeds = [b"RECEIVE_STAKE_TOKEN_ATA_SEED", stake_token_mint.key().as_ref()],
-            bump,
-        )]
+        mut,
+        token::mint=stake_token_mint,
+        token::authority = pool_authority,
+        token::token_program = token_program,
+        seeds = [b"RECEIVE_STAKE_TOKEN_ATA_SEED", stake_token_mint.key().as_ref()],
+        bump,
+    )]
     pub receive_stake_token_ata: InterfaceAccount<'info, TokenAccount>,
 
     #[account(mut)]
@@ -162,4 +132,37 @@ pub struct UnStake<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 
     pub system_program: Program<'info, System>,
+}
+
+impl<'info> UnStake<'info> {
+    pub fn transfer_checked_ctx<'a>(
+        &'a self,
+        seeds: &'a [&[&[u8]]],
+    ) -> CpiContext<'_, '_, '_, 'info, TransferChecked<'info>> {
+        CpiContext::new_with_signer(
+            self.token_program.to_account_info(),
+            TransferChecked {
+                from: self.receive_stake_token_ata.to_account_info(),
+                mint: self.stake_token_mint.to_account_info(),
+                to: self.user_stake_token_ata.to_account_info(),
+                authority: self.pool_authority.to_account_info(),
+            },
+            seeds,
+        )
+    }
+
+    pub fn mint_to_ctx<'a>(
+        &'a self,
+        seeds: &'a [&[&[u8]]],
+    ) -> CpiContext<'_, '_, '_, 'info, MintTo<'info>> {
+        CpiContext::new_with_signer(
+            self.token_program.to_account_info(),
+            MintTo {
+                mint: self.rewards_token_mint.to_account_info(),
+                to: self.user_rewards_token_ata.to_account_info(),
+                authority: self.pool_authority.to_account_info(),
+            },
+            seeds,
+        )
+    }
 }

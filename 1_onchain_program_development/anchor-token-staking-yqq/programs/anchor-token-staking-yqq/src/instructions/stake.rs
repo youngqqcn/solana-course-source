@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
-    token_2022::{transfer_checked, TransferChecked}, // 必须用 token_2022, 否则会报错
+    token_2022::{transfer_checked, TransferChecked},
     token_interface::{Mint, TokenAccount, TokenInterface},
 };
 
@@ -9,17 +9,8 @@ use crate::{PoolState, StakeError, StakeInfo};
 pub fn handler_stake(ctx: Context<Stake>, stake_amount: u64) -> Result<()> {
     msg!("handler_stake");
     // TODO: 转移 stake token
-    let cpi_ctx = CpiContext::new(
-        ctx.accounts.token_program.to_account_info(),
-        TransferChecked {
-            from: ctx.accounts.user_stake_token_ata.to_account_info(),
-            mint: ctx.accounts.stake_token_mint.to_account_info(),
-            to: ctx.accounts.receive_stake_token_ata.to_account_info(),
-            authority: ctx.accounts.payer.to_account_info(),
-        },
-    );
     transfer_checked(
-        cpi_ctx,
+        ctx.accounts.transfer_ctx(),
         stake_amount,
         ctx.accounts.stake_token_mint.decimals,
     )?;
@@ -99,4 +90,18 @@ pub struct Stake<'info> {
 
     // pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
+}
+
+impl<'info> Stake<'info> {
+    pub fn transfer_ctx(&self) -> CpiContext<'_, '_, '_, 'info, TransferChecked<'info>> {
+        CpiContext::new(
+            self.token_program.to_account_info(),
+            TransferChecked {
+                from: self.user_stake_token_ata.to_account_info(),
+                mint: self.stake_token_mint.to_account_info(),
+                to: self.receive_stake_token_ata.to_account_info(),
+                authority: self.payer.to_account_info(),
+            },
+        )
+    }
 }
